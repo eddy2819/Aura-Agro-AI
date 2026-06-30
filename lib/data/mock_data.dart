@@ -1,0 +1,218 @@
+import '../models/alert_model.dart';
+import '../models/animal.dart';
+import '../models/marketplace_item.dart';
+import '../models/score_breakdown.dart';
+
+/// Datos de ejemplo basados en AURA Agro AI - Finca El Paraiso
+class MockData {
+  MockData._();
+
+  static const herdScore = ScoreBreakdown(
+    overall: 87,
+    trend: 3,
+    health: 92,
+    nutrition: 85,
+    vaccination: 88,
+    productivity: 83,
+    zoneAverage: 72,
+  );
+
+  static const animals = <Animal>[
+    Animal(
+      id: '0234',
+      name: 'Estrella',
+      tag: '#0234',
+      category: 'Vaca Lechera',
+      score: 96,
+      description: 'Excelente condicion corporal y produccion consistente',
+      weightKg: 485,
+      productionLiters: '12.5 L/dia',
+    ),
+    Animal(
+      id: '0089',
+      name: 'Tormenta',
+      tag: '#0089',
+      category: 'Toro Reproductor',
+      score: 78,
+      description:
+          'Vacuna vencida afecta el puntaje. Programa vacunacion urgente.',
+      weightKg: 720,
+      vaccineStatus: 'Vencida',
+      hasAlert: true,
+    ),
+    Animal(
+      id: '0456',
+      name: 'Manchita',
+      tag: '#0456',
+      category: 'Ternero',
+      score: 82,
+      description:
+          'Peso ligeramente bajo para su edad. Ajusta la alimentacion.',
+      weightKg: 95,
+      vaccineStatus: '28 May',
+      hasAlert: true,
+    ),
+    Animal(
+      id: '0178',
+      name: 'Luna',
+      tag: '#0178',
+      category: 'Vaca Lechera',
+      score: 94,
+      description: 'Muy buen rendimiento. Mantiene la produccion estable.',
+      weightKg: 420,
+      productionLiters: '10.8 L/dia',
+    ),
+    Animal(
+      id: '0312',
+      name: 'Campeon',
+      tag: '#0312',
+      category: 'Toro Engorde',
+      score: 91,
+      description: 'Ganancia de peso optima. Listo para venta en 30 dias.',
+      weightKg: 580,
+    ),
+  ];
+
+  static const homeAlerts = <AlertModel>[
+    AlertModel(
+      animalName: 'Vaca #0234',
+      animalTag: '#0234',
+      detectedAgo: 'Hace 2 horas',
+      title: 'Riesgo de mastitis detectado',
+    ),
+    AlertModel(
+      animalName: 'Toro #0089',
+      animalTag: '#0089',
+      detectedAgo: 'Hace 1 dia',
+      title: 'Vacuna vencida: Fiebre Aftosa',
+    ),
+    AlertModel(
+      animalName: 'Ternero #0456',
+      animalTag: '#0456',
+      detectedAgo: 'Hace 3 dias',
+      title: 'Bajo peso para su edad',
+    ),
+  ];
+
+  static const vetAlerts = <AlertModel>[
+    AlertModel(
+      animalName: 'Vaca #0234 - Estrella',
+      animalTag: '#0234',
+      farm: 'Finca El Paraiso',
+      riskScore: 94,
+      detectedAgo: 'Hace 2 horas',
+      title: 'Riesgo de Mastitis',
+      symptoms: ['Leche con grumos', 'Ubre inflamada', 'Fiebre leve'],
+      aiRecommendation:
+          'Tratamiento antibiotico recomendado. Separar del hato.',
+    ),
+    AlertModel(
+      animalName: 'Toro #0089 - Tormenta',
+      animalTag: '#0089',
+      farm: 'Finca El Paraiso',
+      riskScore: 100,
+      detectedAgo: 'Hace 1 dia',
+      title: 'Vacuna Vencida - Fiebre Aftosa',
+      aiRecommendation: 'Programar vacunacion inmediata.',
+    ),
+    AlertModel(
+      animalName: 'Ternero #0456 - Manchita',
+      animalTag: '#0456',
+      farm: 'Finca La Esperanza',
+      riskScore: 89,
+      detectedAgo: 'Hace 3 dias',
+      title: 'Bajo peso para edad',
+      symptoms: ['Peso 15% bajo promedio', 'Apetito reducido'],
+      aiRecommendation: 'Revisar dieta y desparasitar.',
+    ),
+  ];
+
+  static const marketplaceItems = <MarketplaceItem>[
+    MarketplaceItem(
+      title: 'Vaca Holstein - 4 anos',
+      score: 96,
+      badge: 'Elite',
+      price: 1850,
+      referencePrice: 2100,
+      negotiable: true,
+      weight: '485 kg',
+      production: '12.5 L/dia',
+      location: 'Loja, Ecuador',
+      responseTime: '< 1 hora',
+      priceRange: '\$1,700 - \$2,200',
+      category: 'Ganado',
+      promoted: true,
+      offerTag: 'Oferta',
+      description: 'Vaca Holstein de 4 años en excelente condición. Score de salud 96/100, vacunación completa al día, sin alertas sanitarias en los últimos 90 días. Producción promedio de 12.5 litros diarios con tendencia estable. Ideal para reproducción o producción lechera continua.',
+      imagePaths: const [
+        'https://images.unsplash.com/photo-1570042225831-d98fa7577f1e?w=600&q=80',
+        'https://images.unsplash.com/photo-1596733430284-f7437764b1a9?w=600&q=80',
+        'https://images.unsplash.com/photo-1527153857715-3908f2bac5e8?w=600&q=80',
+      ],
+      sisaVerified: true,
+      vacunasAlDia: true,
+      historialCompleto: true,
+      fotosCalidad: true,
+      cvmState: 'verified',
+    ),
+    MarketplaceItem(
+      title: 'Vaquilla Jersey Prenada',
+      score: 98,
+      badge: 'Elite',
+      price: 2400,
+      negotiable: true,
+      weight: '420 kg',
+      location: 'Vilcabamba, Ecuador',
+      responseTime: '< 30 min',
+      priceRange: '\$2,200 - \$2,800',
+      category: 'Ganado',
+      promoted: true,
+    ),
+    MarketplaceItem(
+      title: 'Queso Fresco Artesanal',
+      score: 88,
+      badge: 'Premium',
+      price: 4.5,
+      negotiable: true,
+      location: 'Saraguro, Ecuador',
+      responseTime: '< 1 hora',
+      category: 'Queso',
+      offerTag: 'Destacado',
+    ),
+    MarketplaceItem(
+      title: 'Toro Brahman Reproductor',
+      score: 94,
+      badge: 'Premium',
+      price: 3200,
+      negotiable: true,
+      weight: '720 kg',
+      location: 'Zamora, Ecuador',
+      responseTime: '< 2 horas',
+      priceRange: '\$2,900 - \$3,500',
+      category: 'Ganado',
+      offerTag: 'Destacado',
+    ),
+    MarketplaceItem(
+      title: 'Leche Fresca - 50 Litros/dia',
+      score: 92,
+      badge: 'Verificado',
+      price: 0.55,
+      location: 'Loja, Ecuador',
+      responseTime: '< 30 min',
+      category: 'Leche',
+    ),
+    MarketplaceItem(
+      title: 'Terneros Mestizos (5)',
+      score: 85,
+      badge: 'Vendedor',
+      price: 450,
+      referencePrice: 500,
+      negotiable: true,
+      weight: '95-110 kg',
+      location: 'Catamayo, Ecuador',
+      responseTime: '< 4 horas',
+      category: 'Ganado',
+      offerTag: 'Oferta',
+    ),
+  ];
+}
