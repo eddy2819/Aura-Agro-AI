@@ -54,7 +54,7 @@ class _AutoCarouselState extends State<AutoCarousel> {
     if (widget.imagePaths.length <= 1) return;
     _timer = Timer.periodic(widget.autoPlayInterval, (timer) {
       if (_isPaused || !_isVisible) return;
-      
+
       final nextPage = (_currentPage + 1) % widget.imagePaths.length;
       if (_pageController.hasClients) {
         _pageController.animateToPage(
@@ -97,11 +97,7 @@ class _AutoCarouselState extends State<AutoCarousel> {
     return Container(
       color: AppColors.greenSurface,
       alignment: Alignment.center,
-      child: Icon(
-        _categoryIcon,
-        size: 54,
-        color: AppColors.primaryGreenDark,
-      ),
+      child: Icon(_categoryIcon, size: 54, color: AppColors.primaryGreenDark),
     );
   }
 
@@ -115,25 +111,35 @@ class _AutoCarouselState extends State<AutoCarousel> {
       provider = FileImage(File(path));
     }
 
-    return Image(
-      image: provider,
-      fit: BoxFit.cover,
-      loadingBuilder: (context, child, loadingProgress) {
-        if (loadingProgress == null) return child;
-        return const Center(
-          child: SizedBox(
-            width: 24,
-            height: 24,
-            child: CircularProgressIndicator(
-              strokeWidth: 2,
-              valueColor: AlwaysStoppedAnimation<Color>(AppColors.primaryGreen),
+    return Container(
+      color: const Color(0xFFF2F5EF),
+      alignment: Alignment.center,
+      child: Image(
+        image: provider,
+        width: double.infinity,
+        height: double.infinity,
+        fit: BoxFit.contain,
+        alignment: Alignment.center,
+        filterQuality: FilterQuality.medium,
+        loadingBuilder: (context, child, loadingProgress) {
+          if (loadingProgress == null) return child;
+          return const Center(
+            child: SizedBox(
+              width: 24,
+              height: 24,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                valueColor: AlwaysStoppedAnimation<Color>(
+                  AppColors.primaryGreen,
+                ),
+              ),
             ),
-          ),
-        );
-      },
-      errorBuilder: (context, error, stackTrace) {
-        return _buildFallbackImage();
-      },
+          );
+        },
+        errorBuilder: (context, error, stackTrace) {
+          return _buildFallbackImage();
+        },
+      ),
     );
   }
 
@@ -226,7 +232,10 @@ class _AutoCarouselState extends State<AutoCarousel> {
               top: 14,
               right: 14,
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.black.withOpacity(0.6),
                   borderRadius: BorderRadius.circular(12),
@@ -255,7 +264,8 @@ class _ZoomableImage extends StatefulWidget {
 }
 
 class _ZoomableImageState extends State<_ZoomableImage> {
-  final TransformationController _transformationController = TransformationController();
+  final TransformationController _transformationController =
+      TransformationController();
   TapDownDetails? _doubleTapDetails;
 
   void _handleDoubleTap() {

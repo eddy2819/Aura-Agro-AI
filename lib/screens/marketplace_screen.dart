@@ -18,6 +18,21 @@ class MarketplaceScreen extends StatefulWidget {
   State<MarketplaceScreen> createState() => _MarketplaceScreenState();
 }
 
+class _MarketplaceFabLocation extends FloatingActionButtonLocation {
+  const _MarketplaceFabLocation();
+
+  @override
+  Offset getOffset(ScaffoldPrelayoutGeometry scaffoldGeometry) {
+    final fabSize = scaffoldGeometry.floatingActionButtonSize;
+    final size = scaffoldGeometry.scaffoldSize;
+    const bottomNavClearance = 112.0;
+    return Offset(
+      size.width - fabSize.width - 16,
+      size.height - fabSize.height - bottomNavClearance,
+    );
+  }
+}
+
 class _MarketplaceScreenState extends State<MarketplaceScreen> {
   String _category = 'Todo';
   int _activeTab = 0; // 0 = Comprar, 1 = Vender (Solo Ganadero)
@@ -41,7 +56,9 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
               onPressed: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => const PublishWizardScreen()),
+                  MaterialPageRoute(
+                    builder: (context) => const PublishWizardScreen(),
+                  ),
                 );
               },
               backgroundColor: AppColors.primaryGreen,
@@ -52,6 +69,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
               ),
             )
           : null,
+      floatingActionButtonLocation: const _MarketplaceFabLocation(),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 120),
         children: [
@@ -79,14 +97,18 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                       child: Container(
                         padding: const EdgeInsets.symmetric(vertical: 12),
                         decoration: BoxDecoration(
-                          color: _activeTab == 0 ? AppColors.primaryGreen : Colors.transparent,
+                          color: _activeTab == 0
+                              ? AppColors.primaryGreen
+                              : Colors.transparent,
                           borderRadius: BorderRadius.circular(12),
                         ),
                         alignment: Alignment.center,
                         child: Text(
                           'Comprar',
                           style: AppTextStyles.bodyBold.copyWith(
-                            color: _activeTab == 0 ? Colors.white : AppColors.textPrimary,
+                            color: _activeTab == 0
+                                ? Colors.white
+                                : AppColors.textPrimary,
                             fontSize: 13,
                           ),
                         ),
@@ -99,14 +121,18 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                       child: Container(
                         padding: const EdgeInsets.symmetric(vertical: 12),
                         decoration: BoxDecoration(
-                          color: _activeTab == 1 ? AppColors.primaryGreen : Colors.transparent,
+                          color: _activeTab == 1
+                              ? AppColors.primaryGreen
+                              : Colors.transparent,
                           borderRadius: BorderRadius.circular(12),
                         ),
                         alignment: Alignment.center,
                         child: Text(
                           'Vender / Mis Anuncios',
                           style: AppTextStyles.bodyBold.copyWith(
-                            color: _activeTab == 1 ? Colors.white : AppColors.textPrimary,
+                            color: _activeTab == 1
+                                ? Colors.white
+                                : AppColors.textPrimary,
                             fontSize: 13,
                           ),
                         ),
@@ -169,7 +195,8 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => MarketItemDetailScreen(item: item),
+                          builder: (context) =>
+                              MarketItemDetailScreen(item: item),
                         ),
                       );
                     },
@@ -177,7 +204,8 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => MarketItemDetailScreen(item: item),
+                          builder: (context) =>
+                              MarketItemDetailScreen(item: item),
                         ),
                       );
                     },
@@ -188,7 +216,10 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
             // VISTA VENDER / MIS PUBLICACIONES (Solo para Ganadero)
             if (provider.myPublications.isEmpty)
               Padding(
-                padding: const EdgeInsets.symmetric(vertical: 48, horizontal: 24),
+                padding: const EdgeInsets.symmetric(
+                  vertical: 48,
+                  horizontal: 24,
+                ),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
@@ -224,13 +255,20 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                         onPressed: () {
                           Navigator.push(
                             context,
-                            MaterialPageRoute(builder: (context) => const PublishWizardScreen()),
+                            MaterialPageRoute(
+                              builder: (context) => const PublishWizardScreen(),
+                            ),
                           );
                         },
-                        icon: const Icon(Icons.add_circle_outline_rounded, color: Colors.white),
+                        icon: const Icon(
+                          Icons.add_circle_outline_rounded,
+                          color: Colors.white,
+                        ),
                         label: Text(
                           'Publicar tu primer anuncio',
-                          style: AppTextStyles.bodyBold.copyWith(color: Colors.white),
+                          style: AppTextStyles.bodyBold.copyWith(
+                            color: Colors.white,
+                          ),
                         ),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.primaryGreen,
@@ -259,17 +297,37 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
               ...provider.myPublications.map(
                 (item) => Padding(
                   padding: const EdgeInsets.only(bottom: 20),
-                  child: MarketItemCard(
-                    item: item,
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => MarketItemDetailScreen(item: item),
-                        ),
-                      );
-                    },
-                    onContact: () {},
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      OutlinedButton.icon(
+                        onPressed: () async {
+                          await Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) =>
+                                  PublishWizardScreen(editingItem: item),
+                            ),
+                          );
+                        },
+                        icon: const Icon(Icons.edit_outlined, size: 18),
+                        label: const Text('Editar publicación'),
+                      ),
+                      const SizedBox(height: 8),
+                      MarketItemCard(
+                        item: item,
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  MarketItemDetailScreen(item: item),
+                            ),
+                          );
+                        },
+                        onContact: () {},
+                      ),
+                    ],
                   ),
                 ),
               ),

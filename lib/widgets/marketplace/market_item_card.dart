@@ -53,7 +53,7 @@ class MarketItemCard extends StatelessWidget {
                   ),
                   child: AutoCarousel(
                     imagePaths: item.imagePaths,
-                    height: 130,
+                    height: 170,
                     category: item.category,
                     isZoomable: false,
                   ),

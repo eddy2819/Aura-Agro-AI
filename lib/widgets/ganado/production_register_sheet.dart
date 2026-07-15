@@ -8,6 +8,7 @@ import '../../data/data_provider.dart';
 import '../../models/animal.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_text_styles.dart';
+import '../common/keyboard_aware_padding.dart';
 
 /// Modal bottom sheet para el registro rápido de la producción de leche (ordeño).
 /// Soporta dos modos: "hato completo" y "vaca individual".
@@ -15,19 +16,17 @@ class ProductionRegisterSheet extends StatefulWidget {
   final Animal? animal; // Nulo si es modo "hato completo"
   final Function(int)? onNavigate; // Redireccionar a otras pestañas
 
-  const ProductionRegisterSheet({
-    super.key,
-    this.animal,
-    this.onNavigate,
-  });
+  const ProductionRegisterSheet({super.key, this.animal, this.onNavigate});
 
   @override
-  State<ProductionRegisterSheet> createState() => _ProductionRegisterSheetState();
+  State<ProductionRegisterSheet> createState() =>
+      _ProductionRegisterSheetState();
 }
 
 class _ProductionRegisterSheetState extends State<ProductionRegisterSheet> {
   final litersController = TextEditingController();
   final obsController = TextEditingController();
+  final ValueNotifier<double?> _enteredLiters = ValueNotifier<double?>(null);
   String selectedTurn = 'Mañana'; // Mañana, Tarde, Total del día
   bool showSuccessCheck = false;
   bool isSaving = false;
@@ -36,14 +35,25 @@ class _ProductionRegisterSheetState extends State<ProductionRegisterSheet> {
   void dispose() {
     litersController.dispose();
     obsController.dispose();
+    _enteredLiters.dispose();
     super.dispose();
   }
 
   String _formatTodayDate() {
     final now = DateTime.now();
     const months = [
-      'Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun',
-      'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'
+      'Ene',
+      'Feb',
+      'Mar',
+      'Abr',
+      'May',
+      'Jun',
+      'Jul',
+      'Ago',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dic',
     ];
     return '${now.day} ${months[now.month - 1]}, ${now.year}';
   }
@@ -53,7 +63,10 @@ class _ProductionRegisterSheetState extends State<ProductionRegisterSheet> {
     final provider = Provider.of<DataProvider>(context);
     final isVacaMode = widget.animal != null;
 
-    final yesterdayStr = DateTime.now().subtract(const Duration(days: 1)).toIso8601String().split('T')[0];
+    final yesterdayStr = DateTime.now()
+        .subtract(const Duration(days: 1))
+        .toIso8601String()
+        .split('T')[0];
 
     // Cálculos de subtexto (Ayer y Promedio 7 días)
     double yesterdayValue = 0.0;
@@ -74,7 +87,10 @@ class _ProductionRegisterSheetState extends State<ProductionRegisterSheet> {
       double sum7Days = 0.0;
       int activeDays = 0;
       for (int i = 1; i <= 7; i++) {
-        final dateStr = DateTime.now().subtract(Duration(days: i)).toIso8601String().split('T')[0];
+        final dateStr = DateTime.now()
+            .subtract(Duration(days: i))
+            .toIso8601String()
+            .split('T')[0];
         final daySum = provider.productionRecords
             .where((r) => r.animalId == cow.id && r.date.startsWith(dateStr))
             .fold(0.0, (sum, r) => sum + r.liters);
@@ -91,14 +107,18 @@ class _ProductionRegisterSheetState extends State<ProductionRegisterSheet> {
           .where((r) => r.date.startsWith(yesterdayStr))
           .fold(0.0, (sum, r) => sum + r.liters);
       if (yesterdayValue == 0.0) {
-        yesterdayValue = 308.0; // Valor estático por defecto si no hay registros
+        yesterdayValue =
+            308.0; // Valor estático por defecto si no hay registros
       }
 
       // Promedio 7 días
       double sum7Days = 0.0;
       int activeDays = 0;
       for (int i = 1; i <= 7; i++) {
-        final dateStr = DateTime.now().subtract(Duration(days: i)).toIso8601String().split('T')[0];
+        final dateStr = DateTime.now()
+            .subtract(Duration(days: i))
+            .toIso8601String()
+            .split('T')[0];
         final daySum = provider.productionRecords
             .where((r) => r.date.startsWith(dateStr))
             .fold(0.0, (sum, r) => sum + r.liters);
@@ -108,26 +128,6 @@ class _ProductionRegisterSheetState extends State<ProductionRegisterSheet> {
         }
       }
       avg7DaysValue = activeDays > 0 ? sum7Days / activeDays : 305.0;
-    }
-
-    final double? enteredLiters = double.tryParse(litersController.text);
-
-    // Calcular variación en tiempo real respecto a ayer
-    double variationPercent = 0.0;
-    Color variationColor = AppColors.textSecondary;
-    IconData variationIcon = LucideIcons.minus;
-    if (enteredLiters != null && enteredLiters > 0 && yesterdayValue > 0) {
-      variationPercent = ((enteredLiters - yesterdayValue) / yesterdayValue) * 100;
-      if (variationPercent >= 0) {
-        variationColor = AppColors.primaryGreen;
-        variationIcon = LucideIcons.trendingUp;
-      } else if (variationPercent > -10) {
-        variationColor = AppColors.alertOrange;
-        variationIcon = LucideIcons.trendingDown;
-      } else {
-        variationColor = AppColors.alertRed;
-        variationIcon = LucideIcons.trendingDown;
-      }
     }
 
     final title = isVacaMode
@@ -149,8 +149,8 @@ class _ProductionRegisterSheetState extends State<ProductionRegisterSheet> {
       ),
       child: Stack(
         children: [
-          Padding(
-            padding: EdgeInsets.fromLTRB(20, 12, 20, MediaQuery.of(context).viewInsets.bottom + 20),
+          KeyboardAwarePadding(
+            basePadding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -198,7 +198,10 @@ class _ProductionRegisterSheetState extends State<ProductionRegisterSheet> {
                             width: 220,
                             decoration: const BoxDecoration(
                               border: Border(
-                                bottom: BorderSide(color: AppColors.border, width: 2),
+                                bottom: BorderSide(
+                                  color: AppColors.border,
+                                  width: 2,
+                                ),
                               ),
                             ),
                             child: Row(
@@ -209,7 +212,10 @@ class _ProductionRegisterSheetState extends State<ProductionRegisterSheet> {
                                   child: TextFormField(
                                     controller: litersController,
                                     autofocus: true,
-                                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                    keyboardType:
+                                        const TextInputType.numberWithOptions(
+                                          decimal: true,
+                                        ),
                                     textAlign: TextAlign.center,
                                     style: GoogleFonts.poppins(
                                       fontSize: 36,
@@ -221,13 +227,13 @@ class _ProductionRegisterSheetState extends State<ProductionRegisterSheet> {
                                       hintStyle: GoogleFonts.poppins(
                                         fontSize: 36,
                                         fontWeight: FontWeight.bold,
-                                        color: AppColors.textSecondary.withOpacity(0.3),
+                                        color: AppColors.textSecondary
+                                            .withOpacity(0.3),
                                       ),
                                       border: InputBorder.none,
                                     ),
-                                    onChanged: (val) {
-                                      setState(() {});
-                                    },
+                                    onChanged: (val) => _enteredLiters.value =
+                                        double.tryParse(val),
                                   ),
                                 ),
                                 const SizedBox(width: 4),
@@ -257,48 +263,92 @@ class _ProductionRegisterSheetState extends State<ProductionRegisterSheet> {
                         ),
                         const SizedBox(height: 20),
 
-                        // Variación en tiempo real (mientras escribe)
-                        if (enteredLiters != null && enteredLiters > 0)
-                          Center(
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                              decoration: BoxDecoration(
-                                color: variationColor.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(20),
-                                border: Border.all(color: variationColor.withOpacity(0.3)),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(variationIcon, color: variationColor, size: 16),
-                                  const SizedBox(width: 6),
-                                  Text(
-                                    '${variationPercent >= 0 ? '+' : ''}${variationPercent.toStringAsFixed(1)}% vs ayer',
-                                    style: AppTextStyles.bodyBold.copyWith(
-                                      color: variationColor,
-                                      fontSize: 13,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ).animate().fadeIn(duration: 250.ms).scale(begin: const Offset(0.95, 0.95), end: const Offset(1.0, 1.0), duration: 250.ms),
-                          ),
+                        // Solo esta sección cambia mientras se escribe.
+                        ValueListenableBuilder<double?>(
+                          valueListenable: _enteredLiters,
+                          builder: (context, enteredLiters, child) {
+                            if (enteredLiters == null || enteredLiters <= 0) {
+                              return const SizedBox.shrink();
+                            }
+                            final variationPercent = yesterdayValue > 0
+                                ? ((enteredLiters - yesterdayValue) /
+                                          yesterdayValue) *
+                                      100
+                                : 0.0;
+                            final variationColor = variationPercent >= 0
+                                ? AppColors.primaryGreen
+                                : variationPercent > -10
+                                ? AppColors.alertOrange
+                                : AppColors.alertRed;
+                            final variationIcon = variationPercent >= 0
+                                ? LucideIcons.trendingUp
+                                : LucideIcons.trendingDown;
+                            return Center(
+                              child:
+                                  Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 16,
+                                          vertical: 8,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: variationColor.withOpacity(
+                                            0.1,
+                                          ),
+                                          borderRadius: BorderRadius.circular(
+                                            20,
+                                          ),
+                                          border: Border.all(
+                                            color: variationColor.withOpacity(
+                                              0.3,
+                                            ),
+                                          ),
+                                        ),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Icon(
+                                              variationIcon,
+                                              color: variationColor,
+                                              size: 16,
+                                            ),
+                                            const SizedBox(width: 6),
+                                            Text(
+                                              '${variationPercent >= 0 ? '+' : ''}${variationPercent.toStringAsFixed(1)}% vs ayer',
+                                              style: AppTextStyles.bodyBold
+                                                  .copyWith(
+                                                    color: variationColor,
+                                                    fontSize: 13,
+                                                  ),
+                                            ),
+                                          ],
+                                        ),
+                                      )
+                                      .animate()
+                                      .fadeIn(duration: 250.ms)
+                                      .scale(
+                                        begin: const Offset(0.95, 0.95),
+                                        end: const Offset(1.0, 1.0),
+                                        duration: 250.ms,
+                                      ),
+                            );
+                          },
+                        ),
                         const SizedBox(height: 24),
 
                         // Campo de turno
                         Text(
                           'Jornada / Turno del Ordeño',
-                          style: AppTextStyles.caption.copyWith(fontWeight: FontWeight.bold),
+                          style: AppTextStyles.caption.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                         const SizedBox(height: 8),
                         SingleChildScrollView(
                           scrollDirection: Axis.horizontal,
                           child: Row(
-                            children: [
-                              'Mañana',
-                              'Tarde',
-                              'Total del día',
-                            ].map((turn) {
+                            children: ['Mañana', 'Tarde', 'Total del día'].map((
+                              turn,
+                            ) {
                               final isSelected = selectedTurn == turn;
                               return Padding(
                                 padding: const EdgeInsets.only(right: 8.0),
@@ -306,7 +356,9 @@ class _ProductionRegisterSheetState extends State<ProductionRegisterSheet> {
                                   label: Text(
                                     turn,
                                     style: AppTextStyles.caption.copyWith(
-                                      color: isSelected ? Colors.white : AppColors.primaryGreen,
+                                      color: isSelected
+                                          ? Colors.white
+                                          : AppColors.primaryGreen,
                                       fontWeight: FontWeight.bold,
                                     ),
                                   ),
@@ -314,7 +366,9 @@ class _ProductionRegisterSheetState extends State<ProductionRegisterSheet> {
                                   selectedColor: AppColors.primaryGreen,
                                   backgroundColor: AppColors.greenSurface,
                                   side: BorderSide.none,
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
                                   onSelected: (selected) {
                                     if (selected) {
                                       setState(() => selectedTurn = turn);
@@ -335,11 +389,20 @@ class _ProductionRegisterSheetState extends State<ProductionRegisterSheet> {
                           decoration: InputDecoration(
                             labelText: 'Observación (Opcional)',
                             labelStyle: AppTextStyles.caption,
-                            prefixIcon: const Icon(LucideIcons.clipboard, size: 20, color: AppColors.primaryGreen),
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                            prefixIcon: const Icon(
+                              LucideIcons.clipboard,
+                              size: 20,
+                              color: AppColors.primaryGreen,
+                            ),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
                             focusedBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
-                              borderSide: const BorderSide(color: AppColors.primaryGreen, width: 2),
+                              borderSide: const BorderSide(
+                                color: AppColors.primaryGreen,
+                                width: 2,
+                              ),
                             ),
                           ),
                         ),
@@ -353,22 +416,34 @@ class _ProductionRegisterSheetState extends State<ProductionRegisterSheet> {
                 SizedBox(
                   width: double.infinity,
                   height: 56,
-                  child: ElevatedButton(
-                    onPressed: (isSaving || enteredLiters == null || enteredLiters <= 0)
-                        ? null
-                        : () => _handleSave(enteredLiters, provider),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primaryGreen,
-                      disabledBackgroundColor: AppColors.primaryGreen.withOpacity(0.5),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                      elevation: 0,
+                  child: ValueListenableBuilder<double?>(
+                    valueListenable: _enteredLiters,
+                    builder: (context, enteredLiters, child) => ElevatedButton(
+                      onPressed:
+                          (isSaving ||
+                              enteredLiters == null ||
+                              enteredLiters <= 0)
+                          ? null
+                          : () => _handleSave(enteredLiters, provider),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primaryGreen,
+                        disabledBackgroundColor: AppColors.primaryGreen
+                            .withOpacity(0.5),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        elevation: 0,
+                      ),
+                      child: isSaving
+                          ? const CircularProgressIndicator(color: Colors.white)
+                          : Text(
+                              'Guardar ordeño',
+                              style: AppTextStyles.bodyBold.copyWith(
+                                color: Colors.white,
+                                fontSize: 16,
+                              ),
+                            ),
                     ),
-                    child: isSaving
-                        ? const CircularProgressIndicator(color: Colors.white)
-                        : Text(
-                            'Guardar ordeño',
-                            style: AppTextStyles.bodyBold.copyWith(color: Colors.white, fontSize: 16),
-                          ),
                   ),
                 ),
               ],
@@ -384,10 +459,10 @@ class _ProductionRegisterSheetState extends State<ProductionRegisterSheet> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     const Icon(
-                      LucideIcons.checkCircle,
-                      color: AppColors.primaryGreen,
-                      size: 100,
-                    )
+                          LucideIcons.checkCircle,
+                          color: AppColors.primaryGreen,
+                          size: 100,
+                        )
                         .animate()
                         .scale(duration: 400.ms, curve: Curves.easeOutBack)
                         .then()
@@ -395,7 +470,9 @@ class _ProductionRegisterSheetState extends State<ProductionRegisterSheet> {
                     const SizedBox(height: 16),
                     Text(
                       'Ordeño guardado',
-                      style: AppTextStyles.h2.copyWith(color: AppColors.primaryGreen),
+                      style: AppTextStyles.h2.copyWith(
+                        color: AppColors.primaryGreen,
+                      ),
                     ).animate().fadeIn(duration: 400.ms),
                   ],
                 ),
@@ -417,13 +494,17 @@ class _ProductionRegisterSheetState extends State<ProductionRegisterSheet> {
         animalId: widget.animal!.id,
         liters: liters,
         turn: selectedTurn,
-        observation: obsController.text.trim().isEmpty ? null : obsController.text.trim(),
+        observation: obsController.text.trim().isEmpty
+            ? null
+            : obsController.text.trim(),
       );
     } else {
       // MODO HATO COMPLETO
       // Distribuir de forma equitativa entre todas las lecheras
       final lecheras = provider.animals
-          .where((a) => a.category == 'Vaca Lechera' || a.category == 'Vaca Seca')
+          .where(
+            (a) => a.category == 'Vaca Lechera' || a.category == 'Vaca Seca',
+          )
           .toList();
 
       if (lecheras.isNotEmpty) {
@@ -433,7 +514,9 @@ class _ProductionRegisterSheetState extends State<ProductionRegisterSheet> {
             animalId: cow.id,
             liters: share,
             turn: selectedTurn,
-            observation: obsController.text.trim().isEmpty ? null : obsController.text.trim(),
+            observation: obsController.text.trim().isEmpty
+                ? null
+                : obsController.text.trim(),
           );
         }
       } else {
@@ -442,7 +525,9 @@ class _ProductionRegisterSheetState extends State<ProductionRegisterSheet> {
           animalId: 'Generico',
           liters: liters,
           turn: selectedTurn,
-          observation: obsController.text.trim().isEmpty ? null : obsController.text.trim(),
+          observation: obsController.text.trim().isEmpty
+              ? null
+              : obsController.text.trim(),
         );
       }
     }
@@ -461,7 +546,9 @@ class _ProductionRegisterSheetState extends State<ProductionRegisterSheet> {
           ),
           backgroundColor: AppColors.primaryGreen,
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
         ),
       );
     }

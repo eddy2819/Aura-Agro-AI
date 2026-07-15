@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
@@ -20,10 +21,12 @@ class NutricionScreen extends StatefulWidget {
   State<NutricionScreen> createState() => _NutricionScreenState();
 }
 
-class _NutricionScreenState extends State<NutricionScreen> with TickerProviderStateMixin {
+class _NutricionScreenState extends State<NutricionScreen>
+    with TickerProviderStateMixin {
   late TabController _tabController;
   final _dictationController = TextEditingController();
   final _searchController = TextEditingController();
+  Timer? _searchDebounce;
 
   // Wizard state
   int _wizardStep = 0;
@@ -39,6 +42,8 @@ class _NutricionScreenState extends State<NutricionScreen> with TickerProviderSt
   // Temporary list of resources before confirmation
   List<NutritionResource> _tempResources = [];
   bool _tempResourcesInitialized = false;
+  final Set<String> _selectedResourceKeys = {};
+  bool _resourceSuggestionsInitialized = false;
 
   // Individual Step 3 state
   String? _selectedPhotoPath;
@@ -59,6 +64,7 @@ class _NutricionScreenState extends State<NutricionScreen> with TickerProviderSt
   // Loading state
   bool _isLoadingPlan = false;
   int _loadingMsgIndex = 0;
+  int _loadingElapsedSeconds = 0;
 
   @override
   void initState() {
@@ -68,6 +74,7 @@ class _NutricionScreenState extends State<NutricionScreen> with TickerProviderSt
 
   @override
   void dispose() {
+    _searchDebounce?.cancel();
     _tabController.dispose();
     _dictationController.dispose();
     _searchController.dispose();
@@ -82,6 +89,71 @@ class _NutricionScreenState extends State<NutricionScreen> with TickerProviderSt
     _tempResourcesInitialized = true;
   }
 
+  String _resourceKey(NutritionResource resource) =>
+      resource.id?.toString() ??
+      '${resource.type}:${resource.name}'.toLowerCase();
+
+  List<Animal> _targetAnimals(DataProvider provider) {
+    if (_objectiveType == 'categoria') {
+      return provider.animals
+          .where((animal) => animal.category == _selectedCategory)
+          .toList();
+    }
+    if (_objectiveType == 'individual' && _selectedAnimalId != null) {
+      return provider.animals
+          .where((animal) => animal.id == _selectedAnimalId)
+          .toList();
+    }
+    return provider.animals;
+  }
+
+  Set<String> _recommendedResourceTypes(DataProvider provider) {
+    final categories = _targetAnimals(
+      provider,
+    ).map((animal) => animal.category.toLowerCase()).toSet();
+    final types = <String>{'pasto', 'silo'};
+    if (categories.any(
+      (c) =>
+          c.contains('lechera') ||
+          c.contains('engorde') ||
+          c.contains('novill'),
+    )) {
+      types.add('concentrado');
+    }
+    if (categories.any(
+      (c) =>
+          c.contains('lechera') ||
+          c.contains('terner') ||
+          c.contains('reproductor'),
+    )) {
+      types.add('suplemento');
+    }
+    return types;
+  }
+
+  void _initializeResourceSuggestions(DataProvider provider) {
+    if (_resourceSuggestionsInitialized) return;
+    final recommendedTypes = _recommendedResourceTypes(provider);
+    for (final resource in _tempResources) {
+      if (resource.amount > 0 &&
+          recommendedTypes.contains(resource.type.toLowerCase())) {
+        _selectedResourceKeys.add(_resourceKey(resource));
+      }
+    }
+    _resourceSuggestionsInitialized = true;
+  }
+
+  void _resetResourceSuggestions() {
+    _selectedResourceKeys.clear();
+    _resourceSuggestionsInitialized = false;
+  }
+
+  List<NutritionResource> get _selectedResources => _tempResources
+      .where(
+        (resource) => _selectedResourceKeys.contains(_resourceKey(resource)),
+      )
+      .toList();
+
   void _prefillTarget(String target, DataProvider provider) {
     _tabController.animateTo(0);
     setState(() {
@@ -95,14 +167,21 @@ class _NutricionScreenState extends State<NutricionScreen> with TickerProviderSt
       setState(() {
         _objectiveType = 'todo';
       });
-    } else if (const ['Vaca Lechera', 'Toro Engorde', 'Toro Reproductor', 'Ternero'].contains(target)) {
+    } else if (const [
+      'Vaca Lechera',
+      'Toro Engorde',
+      'Toro Reproductor',
+      'Ternero',
+    ].contains(target)) {
       setState(() {
         _objectiveType = 'categoria';
         _selectedCategory = target;
       });
     } else {
       try {
-        final anim = provider.animals.firstWhere((a) => a.name == target || a.tag == target || a.id == target);
+        final anim = provider.animals.firstWhere(
+          (a) => a.name == target || a.tag == target || a.id == target,
+        );
         setState(() {
           _objectiveType = 'individual';
           _selectedAnimalId = anim.id;
@@ -134,24 +213,28 @@ class _NutricionScreenState extends State<NutricionScreen> with TickerProviderSt
             children: [
               Text(
                 'Dictado por Voz IA',
-                style: AppTextStyles.h2.copyWith(color: AppColors.primaryGreenDark),
+                style: AppTextStyles.h2.copyWith(
+                  color: AppColors.primaryGreenDark,
+                ),
               ),
               const SizedBox(height: 20),
               Container(
-                width: 80,
-                height: 80,
-                decoration: const BoxDecoration(
-                  color: AppColors.alertOrangeSurface,
-                  shape: BoxShape.circle,
-                ),
-                alignment: Alignment.center,
-                child: const Icon(
-                  Icons.mic_rounded,
-                  color: AppColors.alertOrange,
-                  size: 40,
-                ),
-              )
-                  .animate(onPlay: (controller) => controller.repeat(reverse: true))
+                    width: 80,
+                    height: 80,
+                    decoration: const BoxDecoration(
+                      color: AppColors.alertOrangeSurface,
+                      shape: BoxShape.circle,
+                    ),
+                    alignment: Alignment.center,
+                    child: const Icon(
+                      Icons.mic_rounded,
+                      color: AppColors.alertOrange,
+                      size: 40,
+                    ),
+                  )
+                  .animate(
+                    onPlay: (controller) => controller.repeat(reverse: true),
+                  )
                   .scale(
                     begin: const Offset(0.9, 0.9),
                     end: const Offset(1.15, 1.15),
@@ -177,7 +260,8 @@ class _NutricionScreenState extends State<NutricionScreen> with TickerProviderSt
                     Future.delayed(const Duration(milliseconds: 1500), () {
                       if (context.mounted && Navigator.canPop(context)) {
                         Navigator.pop(context);
-                        _dictationController.text = 'Tengo 15 hectáreas de pasto kikuyo, 5 toneladas de silo de maíz y 12 sacos de balanceado';
+                        _dictationController.text =
+                            'Tengo 15 hectáreas de pasto kikuyo, 5 toneladas de silo de maíz y 12 sacos de balanceado';
                         _parseTextAndUpdateResources(_dictationController.text);
                       }
                     });
@@ -187,7 +271,9 @@ class _NutricionScreenState extends State<NutricionScreen> with TickerProviderSt
                     statusText,
                     textAlign: TextAlign.center,
                     style: AppTextStyles.bodyBold.copyWith(
-                      color: isFinished ? AppColors.primaryGreenDark : AppColors.textSecondary,
+                      color: isFinished
+                          ? AppColors.primaryGreenDark
+                          : AppColors.textSecondary,
                     ),
                   );
                 },
@@ -212,10 +298,18 @@ class _NutricionScreenState extends State<NutricionScreen> with TickerProviderSt
     final lowercaseText = text.toLowerCase();
 
     // Regex parsing
-    final pastoRegExp = RegExp(r'(\d+(?:\.\d+)?)\s*(?:ha|hect[aá]rea|hect[aá]ria|hect[aá]reas|hect[aá]rias)');
-    final siloRegExp = RegExp(r'(\d+(?:\.\d+)?)\s*(?:tonelada|toneladas|ton|t\b)');
-    final concentradoRegExp = RegExp(r'(\d+(?:\.\d+)?)\s*(?:kg|kilo|kilos|sacos|saco|bulto|bultos)\s*(?:de\s+)?(?:concentrado|balanceado|afrecho|ma[ií]z)');
-    final suplementoRegExp = RegExp(r'(\d+(?:\.\d+)?)\s*(?:kg|kilo|kilos|sacos|saco)\s*(?:de\s+)?(?:melaza|suplemento|sal|mineral)');
+    final pastoRegExp = RegExp(
+      r'(\d+(?:\.\d+)?)\s*(?:ha|hect[aá]rea|hect[aá]ria|hect[aá]reas|hect[aá]rias)',
+    );
+    final siloRegExp = RegExp(
+      r'(\d+(?:\.\d+)?)\s*(?:tonelada|toneladas|ton|t\b)',
+    );
+    final concentradoRegExp = RegExp(
+      r'(\d+(?:\.\d+)?)\s*(?:kg|kilo|kilos|sacos|saco|bulto|bultos)\s*(?:de\s+)?(?:concentrado|balanceado|afrecho|ma[ií]z)',
+    );
+    final suplementoRegExp = RegExp(
+      r'(\d+(?:\.\d+)?)\s*(?:kg|kilo|kilos|sacos|saco)\s*(?:de\s+)?(?:melaza|suplemento|sal|mineral)',
+    );
 
     final pastoMatch = pastoRegExp.firstMatch(lowercaseText);
     final siloMatch = siloRegExp.firstMatch(lowercaseText);
@@ -239,46 +333,74 @@ class _NutricionScreenState extends State<NutricionScreen> with TickerProviderSt
         final val = double.tryParse(concentradoMatch.group(1) ?? '');
         if (val != null) {
           // Si dice sacos, estimamos 40kg por saco
-          final isSacos = lowercaseText.contains('saco') || lowercaseText.contains('bulto');
+          final isSacos =
+              lowercaseText.contains('saco') || lowercaseText.contains('bulto');
           final finalVal = isSacos ? val * 40.0 : val;
-          _addOrUpdateTempResource('concentrado', 'Balanceado Comercial', finalVal, 'kg');
+          _addOrUpdateTempResource(
+            'concentrado',
+            'Balanceado Comercial',
+            finalVal,
+            'kg',
+          );
         }
       }
       if (suplementoMatch != null) {
         final val = double.tryParse(suplementoMatch.group(1) ?? '');
         if (val != null) {
-          _addOrUpdateTempResource('suplemento', 'Melaza / Sal Mineral', val, 'kg');
+          _addOrUpdateTempResource(
+            'suplemento',
+            'Melaza / Sal Mineral',
+            val,
+            'kg',
+          );
         }
       }
     });
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Recursos extraídos de la entrada de texto.', style: AppTextStyles.bodyBold.copyWith(color: Colors.white)),
+        content: Text(
+          'Recursos extraídos de la entrada de texto.',
+          style: AppTextStyles.bodyBold.copyWith(color: Colors.white),
+        ),
         backgroundColor: AppColors.primaryGreen,
         behavior: SnackBarBehavior.floating,
       ),
     );
   }
 
-  void _addOrUpdateTempResource(String type, String name, double amount, String unit) {
+  void _addOrUpdateTempResource(
+    String type,
+    String name,
+    double amount,
+    String unit,
+  ) {
     final index = _tempResources.indexWhere((r) => r.type == type);
     if (index >= 0) {
-      _tempResources[index] = _tempResources[index].copyWith(amount: amount, unit: unit);
+      _tempResources[index] = _tempResources[index].copyWith(
+        amount: amount,
+        unit: unit,
+      );
+      _selectedResourceKeys.add(_resourceKey(_tempResources[index]));
     } else {
-      _tempResources.add(NutritionResource(
+      final resource = NutritionResource(
         type: type,
         name: name,
         amount: amount,
         unit: unit,
         updatedAt: DateTime.now().toIso8601String(),
         availability: 'Disponible',
-      ));
+      );
+      _tempResources.add(resource);
+      _selectedResourceKeys.add(_resourceKey(resource));
     }
   }
 
   // --- PHOTO & BODY CONDITION STEPS ---
-  Future<void> _pickAndUploadImage(ImageSource source, DataProvider provider) async {
+  Future<void> _pickAndUploadImage(
+    ImageSource source,
+    DataProvider provider,
+  ) async {
     final picker = ImagePicker();
     final picked = await picker.pickImage(source: source);
     if (picked == null) return;
@@ -292,7 +414,10 @@ class _NutricionScreenState extends State<NutricionScreen> with TickerProviderSt
     try {
       // Subir imagen de forma privada a Supabase Storage
       final fileName = 'body_${DateTime.now().millisecondsSinceEpoch}.jpg';
-      uploadedPath = await SupabaseService.instance.uploadAnimalPhoto(picked.path, fileName);
+      uploadedPath = await SupabaseService.instance.uploadAnimalPhoto(
+        picked.path,
+        fileName,
+      );
     } catch (e) {
       debugPrint('Error al subir foto a Supabase Storage: $e');
       uploadedPath = null;
@@ -301,36 +426,45 @@ class _NutricionScreenState extends State<NutricionScreen> with TickerProviderSt
     Map<String, dynamic>? analysisResult;
 
     // Integración real con la Edge Function aura-ai de Supabase
-    if (SupabaseService.instance.isEnabled && SupabaseService.instance.isAuthenticated && uploadedPath != null) {
+    if (SupabaseService.instance.isEnabled &&
+        SupabaseService.instance.isAuthenticated &&
+        uploadedPath != null) {
       try {
         Animal? selectedAnimal;
         try {
-          selectedAnimal = provider.animals.firstWhere((a) => a.id == _selectedAnimalId);
+          selectedAnimal = provider.animals.firstWhere(
+            (a) => a.id == _selectedAnimalId,
+          );
         } catch (_) {}
 
         final payload = {
           'scope': 'individual',
           'action': 'analyze_photo',
-          'datos_animales': selectedAnimal != null ? [
-            {
-              'id': selectedAnimal.id,
-              'name': selectedAnimal.name,
-              'tag': selectedAnimal.tag,
-              'category': selectedAnimal.category,
-              'weight_kg': selectedAnimal.weightKg,
-              'stage': selectedAnimal.stage,
-              'body_condition': selectedAnimal.bodyCondition,
-              'breed': selectedAnimal.breed,
-              'sex': selectedAnimal.sex,
-            }
-          ] : [],
+          'datos_animales': selectedAnimal != null
+              ? [
+                  {
+                    'id': selectedAnimal.id,
+                    'name': selectedAnimal.name,
+                    'tag': selectedAnimal.tag,
+                    'category': selectedAnimal.category,
+                    'weight_kg': selectedAnimal.weightKg,
+                    'stage': selectedAnimal.stage,
+                    'body_condition': selectedAnimal.bodyCondition,
+                    'breed': selectedAnimal.breed,
+                    'sex': selectedAnimal.sex,
+                  },
+                ]
+              : [],
           'foto_opcional': uploadedPath,
         };
 
-        final response = await SupabaseService.instance.invokeNutritionEdgeFunction(payload);
+        final response = await SupabaseService.instance
+            .invokeNutritionEdgeFunction(payload);
         if (response != null) {
           if (response['visual_analysis'] != null) {
-            analysisResult = Map<String, dynamic>.from(response['visual_analysis']);
+            analysisResult = Map<String, dynamic>.from(
+              response['visual_analysis'],
+            );
           } else if (response.containsKey('body_condition_estimated')) {
             analysisResult = response;
           }
@@ -347,7 +481,9 @@ class _NutricionScreenState extends State<NutricionScreen> with TickerProviderSt
 
       Animal? selectedAnimal;
       try {
-        selectedAnimal = provider.animals.firstWhere((a) => a.id == _selectedAnimalId);
+        selectedAnimal = provider.animals.firstWhere(
+          (a) => a.id == _selectedAnimalId,
+        );
       } catch (_) {}
 
       final double currentBC = selectedAnimal?.bodyCondition ?? 3.5;
@@ -357,13 +493,16 @@ class _NutricionScreenState extends State<NutricionScreen> with TickerProviderSt
 
       analysisResult = {
         'body_condition_estimated': estimation,
-        'observations': 'Animal fotografiado de perfil. Estructura ósea normal. '
+        'observations':
+            'Animal fotografiado de perfil. Estructura ósea normal. '
             'Línea dorsal recta con cobertura grasa moderada en cadera y costillas traseras. '
             'Pelaje uniforme y brillante sin anomalías físicas visibles.',
-        'nutritional_improvements': 'Continuar con dieta equilibrada. '
+        'nutritional_improvements':
+            'Continuar con dieta equilibrada. '
             'Asegurar un suplemento diario de 150g de sales minerales para sostener el metabolismo.',
         'confidence_level': 'Alta (92%)',
-        'disclaimer': 'Esta evaluación es orientativa y no sustituye una valoración veterinaria profesional.'
+        'disclaimer':
+            'Esta evaluación es orientativa y no sustituye una valoración veterinaria profesional.',
       };
     }
 
@@ -379,12 +518,15 @@ class _NutricionScreenState extends State<NutricionScreen> with TickerProviderSt
   // --- LOADING STEPS TIMER ---
   Future<void> _startProgressMessages() async {
     _loadingMsgIndex = 0;
+    _loadingElapsedSeconds = 0;
     while (_isLoadingPlan) {
       await Future.delayed(const Duration(milliseconds: 1000));
       if (!_isLoadingPlan) break;
       if (mounted) {
         setState(() {
-          _loadingMsgIndex = (_loadingMsgIndex + 1) % 4;
+          _loadingElapsedSeconds++;
+          final nextMessage = _loadingElapsedSeconds ~/ 3;
+          _loadingMsgIndex = nextMessage > 3 ? 3 : nextMessage;
         });
       }
     }
@@ -396,26 +538,38 @@ class _NutricionScreenState extends State<NutricionScreen> with TickerProviderSt
     if (_objectiveType == 'todo') {
       targetAnimals = provider.animals;
     } else if (_objectiveType == 'categoria') {
-      targetAnimals = provider.animals.where((a) => a.category == _selectedCategory).toList();
+      targetAnimals = provider.animals
+          .where((a) => a.category == _selectedCategory)
+          .toList();
     } else if (_objectiveType == 'individual' && _selectedAnimalId != null) {
-      targetAnimals = provider.animals.where((a) => a.id == _selectedAnimalId).toList();
+      targetAnimals = provider.animals
+          .where((a) => a.id == _selectedAnimalId)
+          .toList();
     }
 
     if (targetAnimals.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('No hay animales seleccionados para el análisis.', style: AppTextStyles.bodyBold.copyWith(color: Colors.white)),
+          content: Text(
+            'No hay animales seleccionados para el análisis.',
+            style: AppTextStyles.bodyBold.copyWith(color: Colors.white),
+          ),
           backgroundColor: AppColors.alertRed,
         ),
       );
       return;
     }
 
-    final confirmedResources = _tempResources.where((r) => r.amount > 0).toList();
+    final confirmedResources = _selectedResources
+        .where((r) => r.amount > 0)
+        .toList();
     if (confirmedResources.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Debe registrar al menos un recurso con cantidad disponible.', style: AppTextStyles.bodyBold.copyWith(color: Colors.white)),
+          content: Text(
+            'Debe registrar al menos un recurso con cantidad disponible.',
+            style: AppTextStyles.bodyBold.copyWith(color: Colors.white),
+          ),
           backgroundColor: AppColors.alertRed,
         ),
       );
@@ -446,6 +600,7 @@ class _NutricionScreenState extends State<NutricionScreen> with TickerProviderSt
 
       final result = await provider.generateNutritionPlan(
         targetAnimals: targetAnimals,
+        selectedResources: confirmedResources,
         includeCalvingStatus: _cPartoLactancia,
         includeForage: _cPriorizarForraje,
         includeSupplements: _cPriorizarSuplementos,
@@ -464,7 +619,9 @@ class _NutricionScreenState extends State<NutricionScreen> with TickerProviderSt
               result: result,
               targetGroup: _objectiveType == 'todo'
                   ? 'Todo el Hato'
-                  : (_objectiveType == 'categoria' ? _selectedCategory : targetAnimals.first.name),
+                  : (_objectiveType == 'categoria'
+                        ? _selectedCategory
+                        : targetAnimals.first.name),
               animalCount: targetAnimals.length,
               targetAnimals: targetAnimals,
               confirmedResources: confirmedResources,
@@ -479,7 +636,10 @@ class _NutricionScreenState extends State<NutricionScreen> with TickerProviderSt
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error generando plan AURA: $e', style: AppTextStyles.bodyBold.copyWith(color: Colors.white)),
+            content: Text(
+              'Error generando plan AURA: $e',
+              style: AppTextStyles.bodyBold.copyWith(color: Colors.white),
+            ),
             backgroundColor: AppColors.alertRed,
           ),
         );
@@ -488,7 +648,10 @@ class _NutricionScreenState extends State<NutricionScreen> with TickerProviderSt
   }
 
   // --- DIALOGS ---
-  void _showAddResourceDialog(BuildContext context, {bool isInventory = false}) {
+  void _showAddResourceDialog(
+    BuildContext context, {
+    bool isInventory = false,
+  }) {
     final provider = Provider.of<DataProvider>(context, listen: false);
     final formKey = GlobalKey<FormState>();
     final nameController = TextEditingController();
@@ -514,7 +677,12 @@ class _NutricionScreenState extends State<NutricionScreen> with TickerProviderSt
                   topRight: Radius.circular(28),
                 ),
               ),
-              padding: EdgeInsets.fromLTRB(20, 20, 20, MediaQuery.of(context).viewInsets.bottom + 20),
+              padding: EdgeInsets.fromLTRB(
+                20,
+                20,
+                20,
+                MediaQuery.of(context).viewInsets.bottom + 20,
+              ),
               child: SingleChildScrollView(
                 child: Form(
                   key: formKey,
@@ -538,13 +706,27 @@ class _NutricionScreenState extends State<NutricionScreen> with TickerProviderSt
                         decoration: InputDecoration(
                           labelText: 'Tipo de Recurso',
                           labelStyle: AppTextStyles.caption,
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                         ),
                         items: const [
-                          DropdownMenuItem(value: 'pasto', child: Text('Pastos')),
-                          DropdownMenuItem(value: 'silo', child: Text('Forrajes y Silos')),
-                          DropdownMenuItem(value: 'concentrado', child: Text('Concentrados')),
-                          DropdownMenuItem(value: 'suplemento', child: Text('Suplementos / Sales')),
+                          DropdownMenuItem(
+                            value: 'pasto',
+                            child: Text('Pastos'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'silo',
+                            child: Text('Forrajes y Silos'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'concentrado',
+                            child: Text('Concentrados'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'suplemento',
+                            child: Text('Suplementos / Sales'),
+                          ),
                         ],
                         onChanged: (val) {
                           if (val != null) {
@@ -566,11 +748,17 @@ class _NutricionScreenState extends State<NutricionScreen> with TickerProviderSt
                         controller: nameController,
                         style: AppTextStyles.bodyBold,
                         decoration: InputDecoration(
-                          labelText: 'Nombre Específico (Ej: Kikuyo, Alfalfa, Sales 12%)',
+                          labelText:
+                              'Nombre Específico (Ej: Kikuyo, Alfalfa, Sales 12%)',
                           labelStyle: AppTextStyles.caption,
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                         ),
-                        validator: (value) => value == null || value.trim().isEmpty ? 'Ingrese el nombre' : null,
+                        validator: (value) =>
+                            value == null || value.trim().isEmpty
+                            ? 'Ingrese el nombre'
+                            : null,
                       ),
                       const SizedBox(height: 14),
                       Row(
@@ -580,15 +768,22 @@ class _NutricionScreenState extends State<NutricionScreen> with TickerProviderSt
                             child: TextFormField(
                               controller: amountController,
                               style: AppTextStyles.bodyBold,
-                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                              keyboardType:
+                                  const TextInputType.numberWithOptions(
+                                    decimal: true,
+                                  ),
                               decoration: InputDecoration(
                                 labelText: 'Cantidad Disponible',
                                 labelStyle: AppTextStyles.caption,
-                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
                               ),
                               validator: (value) {
-                                if (value == null || value.trim().isEmpty) return 'Requerido';
-                                if (double.tryParse(value) == null) return 'Número inválido';
+                                if (value == null || value.trim().isEmpty)
+                                  return 'Requerido';
+                                if (double.tryParse(value) == null)
+                                  return 'Número inválido';
                                 return null;
                               },
                             ),
@@ -601,12 +796,23 @@ class _NutricionScreenState extends State<NutricionScreen> with TickerProviderSt
                               decoration: InputDecoration(
                                 labelText: 'Unidad',
                                 labelStyle: AppTextStyles.caption,
-                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
                               ),
                               items: const [
-                                DropdownMenuItem(value: 'ha', child: Text('ha')),
-                                DropdownMenuItem(value: 'ton', child: Text('ton')),
-                                DropdownMenuItem(value: 'kg', child: Text('kg')),
+                                DropdownMenuItem(
+                                  value: 'ha',
+                                  child: Text('ha'),
+                                ),
+                                DropdownMenuItem(
+                                  value: 'ton',
+                                  child: Text('ton'),
+                                ),
+                                DropdownMenuItem(
+                                  value: 'kg',
+                                  child: Text('kg'),
+                                ),
                               ],
                               onChanged: (val) {
                                 if (val != null) {
@@ -623,11 +829,16 @@ class _NutricionScreenState extends State<NutricionScreen> with TickerProviderSt
                       TextFormField(
                         controller: costController,
                         style: AppTextStyles.bodyBold,
-                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
                         decoration: InputDecoration(
-                          labelText: 'Costo unitario por unidad (Opcional - USD)',
+                          labelText:
+                              'Costo unitario por unidad (Opcional - USD)',
                           labelStyle: AppTextStyles.caption,
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                         ),
                       ),
                       const SizedBox(height: 14),
@@ -636,12 +847,23 @@ class _NutricionScreenState extends State<NutricionScreen> with TickerProviderSt
                         decoration: InputDecoration(
                           labelText: 'Disponibilidad',
                           labelStyle: AppTextStyles.caption,
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                         ),
                         items: const [
-                          DropdownMenuItem(value: 'Disponible', child: Text('Disponible')),
-                          DropdownMenuItem(value: 'Limitado', child: Text('Limitado')),
-                          DropdownMenuItem(value: 'Agotado', child: Text('Agotado')),
+                          DropdownMenuItem(
+                            value: 'Disponible',
+                            child: Text('Disponible'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'Limitado',
+                            child: Text('Limitado'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'Agotado',
+                            child: Text('Agotado'),
+                          ),
                         ],
                         onChanged: (val) {
                           if (val != null) {
@@ -658,7 +880,9 @@ class _NutricionScreenState extends State<NutricionScreen> with TickerProviderSt
                         decoration: InputDecoration(
                           labelText: 'Observaciones / Notas',
                           labelStyle: AppTextStyles.caption,
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                         ),
                       ),
                       const SizedBox(height: 20),
@@ -669,7 +893,9 @@ class _NutricionScreenState extends State<NutricionScreen> with TickerProviderSt
                           onPressed: () async {
                             if (formKey.currentState!.validate()) {
                               final name = nameController.text.trim();
-                              final amount = double.parse(amountController.text);
+                              final amount = double.parse(
+                                amountController.text,
+                              );
                               final cost = double.tryParse(costController.text);
                               final obs = observationsController.text.trim();
 
@@ -685,16 +911,19 @@ class _NutricionScreenState extends State<NutricionScreen> with TickerProviderSt
                                 );
                               } else {
                                 setState(() {
-                                  _tempResources.add(NutritionResource(
-                                    type: selectedType,
-                                    name: name,
-                                    amount: amount,
-                                    unit: selectedUnit,
-                                    cost: cost,
-                                    availability: selectedAvailability,
-                                    observations: obs,
-                                    updatedAt: DateTime.now().toIso8601String(),
-                                  ));
+                                  _tempResources.add(
+                                    NutritionResource(
+                                      type: selectedType,
+                                      name: name,
+                                      amount: amount,
+                                      unit: selectedUnit,
+                                      cost: cost,
+                                      availability: selectedAvailability,
+                                      observations: obs,
+                                      updatedAt: DateTime.now()
+                                          .toIso8601String(),
+                                    ),
+                                  );
                                 });
                               }
 
@@ -705,11 +934,17 @@ class _NutricionScreenState extends State<NutricionScreen> with TickerProviderSt
                           },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppColors.primaryGreen,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
                           ),
                           child: Text(
-                            isInventory ? 'Registrar Insumo' : 'Guardar en Asistente',
-                            style: AppTextStyles.bodyBold.copyWith(color: Colors.white),
+                            isInventory
+                                ? 'Registrar Insumo'
+                                : 'Guardar en Asistente',
+                            style: AppTextStyles.bodyBold.copyWith(
+                              color: Colors.white,
+                            ),
                           ),
                         ),
                       ),
@@ -727,10 +962,18 @@ class _NutricionScreenState extends State<NutricionScreen> with TickerProviderSt
   void _showEditResourceDialog(BuildContext context, int index) {
     final resource = _tempResources[index];
     final formKey = GlobalKey<FormState>();
-    final amountController = TextEditingController(text: resource.amount.toString());
-    final costController = TextEditingController(text: resource.cost?.toString() ?? '');
-    final expirationController = TextEditingController(text: resource.expirationDate ?? '');
-    final observationsController = TextEditingController(text: resource.observations ?? '');
+    final amountController = TextEditingController(
+      text: resource.amount.toString(),
+    );
+    final costController = TextEditingController(
+      text: resource.cost?.toString() ?? '',
+    );
+    final expirationController = TextEditingController(
+      text: resource.expirationDate ?? '',
+    );
+    final observationsController = TextEditingController(
+      text: resource.observations ?? '',
+    );
     String selectedAvailability = resource.availability ?? 'Disponible';
 
     showModalBottomSheet(
@@ -748,7 +991,12 @@ class _NutricionScreenState extends State<NutricionScreen> with TickerProviderSt
                   topRight: Radius.circular(28),
                 ),
               ),
-              padding: EdgeInsets.fromLTRB(20, 20, 20, MediaQuery.of(context).viewInsets.bottom + 20),
+              padding: EdgeInsets.fromLTRB(
+                20,
+                20,
+                20,
+                MediaQuery.of(context).viewInsets.bottom + 20,
+              ),
               child: SingleChildScrollView(
                 child: Form(
                   key: formKey,
@@ -759,7 +1007,10 @@ class _NutricionScreenState extends State<NutricionScreen> with TickerProviderSt
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text('Editar ${resource.name}', style: AppTextStyles.h2),
+                          Text(
+                            'Editar ${resource.name}',
+                            style: AppTextStyles.h2,
+                          ),
                           IconButton(
                             icon: const Icon(Icons.close),
                             onPressed: () => Navigator.pop(context),
@@ -770,15 +1021,21 @@ class _NutricionScreenState extends State<NutricionScreen> with TickerProviderSt
                       TextFormField(
                         controller: amountController,
                         style: AppTextStyles.bodyBold,
-                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
                         decoration: InputDecoration(
                           labelText: 'Cantidad Disponible (${resource.unit})',
                           labelStyle: AppTextStyles.caption,
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                         ),
                         validator: (value) {
-                          if (value == null || value.trim().isEmpty) return 'Requerido';
-                          if (double.tryParse(value) == null) return 'Número inválido';
+                          if (value == null || value.trim().isEmpty)
+                            return 'Requerido';
+                          if (double.tryParse(value) == null)
+                            return 'Número inválido';
                           return null;
                         },
                       ),
@@ -786,11 +1043,15 @@ class _NutricionScreenState extends State<NutricionScreen> with TickerProviderSt
                       TextFormField(
                         controller: costController,
                         style: AppTextStyles.bodyBold,
-                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
                         decoration: InputDecoration(
                           labelText: 'Costo por unidad (USD)',
                           labelStyle: AppTextStyles.caption,
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                         ),
                       ),
                       const SizedBox(height: 14),
@@ -799,12 +1060,23 @@ class _NutricionScreenState extends State<NutricionScreen> with TickerProviderSt
                         decoration: InputDecoration(
                           labelText: 'Disponibilidad',
                           labelStyle: AppTextStyles.caption,
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                         ),
                         items: const [
-                          DropdownMenuItem(value: 'Disponible', child: Text('Disponible')),
-                          DropdownMenuItem(value: 'Limitado', child: Text('Limitado')),
-                          DropdownMenuItem(value: 'Agotado', child: Text('Agotado')),
+                          DropdownMenuItem(
+                            value: 'Disponible',
+                            child: Text('Disponible'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'Limitado',
+                            child: Text('Limitado'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'Agotado',
+                            child: Text('Agotado'),
+                          ),
                         ],
                         onChanged: (val) {
                           if (val != null) {
@@ -819,9 +1091,12 @@ class _NutricionScreenState extends State<NutricionScreen> with TickerProviderSt
                         controller: expirationController,
                         style: AppTextStyles.bodyBold,
                         decoration: InputDecoration(
-                          labelText: 'Fecha de Vencimiento (Opcional - YYYY-MM-DD)',
+                          labelText:
+                              'Fecha de Vencimiento (Opcional - YYYY-MM-DD)',
                           labelStyle: AppTextStyles.caption,
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                         ),
                       ),
                       const SizedBox(height: 14),
@@ -831,7 +1106,9 @@ class _NutricionScreenState extends State<NutricionScreen> with TickerProviderSt
                         decoration: InputDecoration(
                           labelText: 'Observaciones / Notas',
                           labelStyle: AppTextStyles.caption,
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                         ),
                       ),
                       const SizedBox(height: 20),
@@ -845,7 +1122,9 @@ class _NutricionScreenState extends State<NutricionScreen> with TickerProviderSt
                                 });
                                 Navigator.pop(context);
                               },
-                              style: TextButton.styleFrom(foregroundColor: AppColors.alertRed),
+                              style: TextButton.styleFrom(
+                                foregroundColor: AppColors.alertRed,
+                              ),
                               child: const Text('Eliminar Recurso'),
                             ),
                           ),
@@ -856,12 +1135,27 @@ class _NutricionScreenState extends State<NutricionScreen> with TickerProviderSt
                                 if (formKey.currentState!.validate()) {
                                   setState(() {
                                     _tempResources[index] = resource.copyWith(
-                                      amount: double.parse(amountController.text),
-                                      cost: double.tryParse(costController.text),
+                                      amount: double.parse(
+                                        amountController.text,
+                                      ),
+                                      cost: double.tryParse(
+                                        costController.text,
+                                      ),
                                       availability: selectedAvailability,
-                                      expirationDate: expirationController.text.trim().isEmpty ? null : expirationController.text.trim(),
-                                      observations: observationsController.text.trim().isEmpty ? null : observationsController.text.trim(),
-                                      updatedAt: DateTime.now().toIso8601String(),
+                                      expirationDate:
+                                          expirationController.text
+                                              .trim()
+                                              .isEmpty
+                                          ? null
+                                          : expirationController.text.trim(),
+                                      observations:
+                                          observationsController.text
+                                              .trim()
+                                              .isEmpty
+                                          ? null
+                                          : observationsController.text.trim(),
+                                      updatedAt: DateTime.now()
+                                          .toIso8601String(),
                                     );
                                   });
                                   Navigator.pop(context);
@@ -869,11 +1163,15 @@ class _NutricionScreenState extends State<NutricionScreen> with TickerProviderSt
                               },
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: AppColors.primaryGreen,
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
                               ),
                               child: Text(
                                 'Actualizar',
-                                style: AppTextStyles.bodyBold.copyWith(color: Colors.white),
+                                style: AppTextStyles.bodyBold.copyWith(
+                                  color: Colors.white,
+                                ),
                               ),
                             ),
                           ),
@@ -909,10 +1207,7 @@ class _NutricionScreenState extends State<NutricionScreen> with TickerProviderSt
             alignment: Alignment.center,
             children: [
               // Línea de progreso (fondo gris)
-              Container(
-                height: 3,
-                color: AppColors.border,
-              ),
+              Container(height: 3, color: AppColors.border),
               // Línea de progreso activa (verde)
               LayoutBuilder(
                 builder: (context, constraints) {
@@ -938,10 +1233,14 @@ class _NutricionScreenState extends State<NutricionScreen> with TickerProviderSt
                     width: 14,
                     height: 14,
                     decoration: BoxDecoration(
-                      color: isDoneOrCurrent ? AppColors.primaryGreen : Colors.white,
+                      color: isDoneOrCurrent
+                          ? AppColors.primaryGreen
+                          : Colors.white,
                       shape: BoxShape.circle,
                       border: Border.all(
-                        color: isDoneOrCurrent ? AppColors.primaryGreen : AppColors.border,
+                        color: isDoneOrCurrent
+                            ? AppColors.primaryGreen
+                            : AppColors.border,
                         width: 2.5,
                       ),
                     ),
@@ -974,19 +1273,25 @@ class _NutricionScreenState extends State<NutricionScreen> with TickerProviderSt
       if (_filterFinca != null && a.finca != _filterFinca) return false;
       if (_filterLote != null && a.lote != _filterLote) return false;
       if (_filterPotrero != null && a.potrero != _filterPotrero) return false;
-      if (_objectiveType == 'categoria' && a.category != _selectedCategory) return false;
+      if (_objectiveType == 'categoria' && a.category != _selectedCategory)
+        return false;
       return true;
     }).toList();
 
     double avgWeight = 0;
     if (filteredAnimals.isNotEmpty) {
-      final double totalW = filteredAnimals.map((a) => a.weightKg).reduce((a, b) => a + b);
+      final double totalW = filteredAnimals
+          .map((a) => a.weightKg)
+          .reduce((a, b) => a + b);
       avgWeight = totalW / filteredAnimals.length;
     }
 
     String selectedAnimalText = "Lola, arete A-024...";
     if (_selectedAnimalId != null) {
-      final anim = provider.animals.firstWhere((a) => a.id == _selectedAnimalId, orElse: () => provider.animals.first);
+      final anim = provider.animals.firstWhere(
+        (a) => a.id == _selectedAnimalId,
+        orElse: () => provider.animals.first,
+      );
       selectedAnimalText = "${anim.name} (${anim.tag})";
     }
 
@@ -996,7 +1301,7 @@ class _NutricionScreenState extends State<NutricionScreen> with TickerProviderSt
         const SizedBox(height: 12),
         Text('Alcance del plan', style: AppTextStyles.h2),
         const SizedBox(height: 16),
-        
+
         _buildAlcanceCard(
           title: 'Toda mi finca',
           subtitle: '${provider.animals.length} animales',
@@ -1005,20 +1310,22 @@ class _NutricionScreenState extends State<NutricionScreen> with TickerProviderSt
           onTap: () {
             setState(() {
               _objectiveType = 'todo';
+              _resetResourceSuggestions();
             });
           },
         ),
-        
+
         _buildAlcanceCard(
           title: 'Un grupo',
-          subtitle: _objectiveType == 'categoria' 
-              ? 'Grupo: $_selectedCategory (${filteredAnimals.length} animales)' 
+          subtitle: _objectiveType == 'categoria'
+              ? 'Grupo: $_selectedCategory (${filteredAnimals.length} animales)'
               : 'Lactancia, terneros...',
           icon: Icons.groups_rounded,
           isSelected: _objectiveType == 'categoria',
           onTap: () {
             setState(() {
               _objectiveType = 'categoria';
+              _resetResourceSuggestions();
             });
           },
         ),
@@ -1031,18 +1338,40 @@ class _NutricionScreenState extends State<NutricionScreen> with TickerProviderSt
             decoration: InputDecoration(
               labelText: 'Selecciona la Categoría',
               labelStyle: AppTextStyles.caption,
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-              prefixIcon: const Icon(Icons.pets_rounded, color: AppColors.primaryGreen),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              prefixIcon: const Icon(
+                Icons.pets_rounded,
+                color: AppColors.primaryGreen,
+              ),
             ),
             items: const [
-              DropdownMenuItem(value: 'Vaca Lechera', child: Text('Vacas Lecheras')),
+              DropdownMenuItem(
+                value: 'Vaca Lechera',
+                child: Text('Vacas Lecheras'),
+              ),
               DropdownMenuItem(value: 'Vaca Seca', child: Text('Vacas Secas')),
-              DropdownMenuItem(value: 'Toro Engorde', child: Text('Toros de Engorde')),
-              DropdownMenuItem(value: 'Toro Reproductor', child: Text('Toros Reproductores')),
-              DropdownMenuItem(value: 'Ternero', child: Text('Terneros de Cría')),
+              DropdownMenuItem(
+                value: 'Toro Engorde',
+                child: Text('Toros de Engorde'),
+              ),
+              DropdownMenuItem(
+                value: 'Toro Reproductor',
+                child: Text('Toros Reproductores'),
+              ),
+              DropdownMenuItem(
+                value: 'Ternero',
+                child: Text('Terneros de Cría'),
+              ),
             ],
             onChanged: (val) {
-              if (val != null) setState(() => _selectedCategory = val);
+              if (val != null) {
+                setState(() {
+                  _selectedCategory = val;
+                  _resetResourceSuggestions();
+                });
+              }
             },
           ),
           const SizedBox(height: 14),
@@ -1058,6 +1387,7 @@ class _NutricionScreenState extends State<NutricionScreen> with TickerProviderSt
           onTap: () {
             setState(() {
               _objectiveType = 'individual';
+              _resetResourceSuggestions();
             });
           },
         ),
@@ -1070,11 +1400,21 @@ class _NutricionScreenState extends State<NutricionScreen> with TickerProviderSt
             decoration: InputDecoration(
               hintText: 'Buscar por nombre, arete o raza...',
               hintStyle: AppTextStyles.caption,
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-              prefixIcon: const Icon(Icons.search_rounded, color: AppColors.primaryGreen),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              prefixIcon: const Icon(
+                Icons.search_rounded,
+                color: AppColors.primaryGreen,
+              ),
             ),
             style: AppTextStyles.body,
-            onChanged: (val) => setState(() {}),
+            onChanged: (_) {
+              _searchDebounce?.cancel();
+              _searchDebounce = Timer(const Duration(milliseconds: 350), () {
+                if (mounted) setState(() {});
+              });
+            },
           ),
           const SizedBox(height: 12),
           Container(
@@ -1093,20 +1433,36 @@ class _NutricionScreenState extends State<NutricionScreen> with TickerProviderSt
                   })
                   .map((a) {
                     final isSel = _selectedAnimalId == a.id;
-                    return ListTile(
-                      dense: true,
-                      title: Text('${a.name} (${a.tag})', style: AppTextStyles.bodyBold),
-                      subtitle: Text('${a.category} • ${a.breed}', style: AppTextStyles.caption),
-                      trailing: isSel ? const Icon(Icons.check_circle_rounded, color: AppColors.primaryGreen) : null,
-                      onTap: () {
-                        setState(() {
-                          _selectedAnimalId = a.id;
-                          _photoAnalysisResult = null;
-                          _selectedPhotoPath = null;
-                        });
-                      },
+                    return Material(
+                      color: Colors.transparent,
+                      child: ListTile(
+                        dense: true,
+                        title: Text(
+                          '${a.name} (${a.tag})',
+                          style: AppTextStyles.bodyBold,
+                        ),
+                        subtitle: Text(
+                          '${a.category} • ${a.breed}',
+                          style: AppTextStyles.caption,
+                        ),
+                        trailing: isSel
+                            ? const Icon(
+                                Icons.check_circle_rounded,
+                                color: AppColors.primaryGreen,
+                              )
+                            : null,
+                        onTap: () {
+                          setState(() {
+                            _selectedAnimalId = a.id;
+                            _photoAnalysisResult = null;
+                            _selectedPhotoPath = null;
+                            _resetResourceSuggestions();
+                          });
+                        },
+                      ),
                     );
-                  }).toList(),
+                  })
+                  .toList(),
             ),
           ),
           const SizedBox(height: 14),
@@ -1114,7 +1470,7 @@ class _NutricionScreenState extends State<NutricionScreen> with TickerProviderSt
             _buildIndividualAnimalFicha(provider),
             const SizedBox(height: 16),
             _buildPhotoUploadSection(provider),
-          ]
+          ],
         ],
       ],
     );
@@ -1126,7 +1482,9 @@ class _NutricionScreenState extends State<NutricionScreen> with TickerProviderSt
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: isSelected ? AppColors.primaryGreen.withOpacity(0.08) : AppColors.background,
+        color: isSelected
+            ? AppColors.primaryGreen.withOpacity(0.08)
+            : AppColors.background,
         shape: BoxShape.circle,
       ),
       child: Icon(
@@ -1160,7 +1518,7 @@ class _NutricionScreenState extends State<NutricionScreen> with TickerProviderSt
                   color: AppColors.primaryGreen.withOpacity(0.08),
                   blurRadius: 10,
                   offset: const Offset(0, 4),
-                )
+                ),
               ]
             : null,
       ),
@@ -1173,7 +1531,9 @@ class _NutricionScreenState extends State<NutricionScreen> with TickerProviderSt
             children: [
               _buildCircularIllustration(
                 icon,
-                isSelected ? AppColors.primaryGreenDark : AppColors.textSecondary,
+                isSelected
+                    ? AppColors.primaryGreenDark
+                    : AppColors.textSecondary,
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -1183,14 +1543,18 @@ class _NutricionScreenState extends State<NutricionScreen> with TickerProviderSt
                     Text(
                       title,
                       style: AppTextStyles.bodyBold.copyWith(
-                        color: isSelected ? AppColors.primaryGreenDark : AppColors.textPrimary,
+                        color: isSelected
+                            ? AppColors.primaryGreenDark
+                            : AppColors.textPrimary,
                       ),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       subtitle,
                       style: AppTextStyles.caption.copyWith(
-                        color: isSelected ? AppColors.primaryGreen : AppColors.textSecondary,
+                        color: isSelected
+                            ? AppColors.primaryGreen
+                            : AppColors.textSecondary,
                       ),
                     ),
                   ],
@@ -1218,7 +1582,11 @@ class _NutricionScreenState extends State<NutricionScreen> with TickerProviderSt
     );
   }
 
-  Widget _buildActionIconButton(String label, IconData icon, VoidCallback onTap) {
+  Widget _buildActionIconButton(
+    String label,
+    IconData icon,
+    VoidCallback onTap,
+  ) {
     return Container(
       height: 110,
       decoration: BoxDecoration(
@@ -1282,28 +1650,75 @@ class _NutricionScreenState extends State<NutricionScreen> with TickerProviderSt
     );
   }
 
-  Widget _buildResourceCard(NutritionResource res) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: ListTile(
-        leading: _buildResourceCircularIcon(res.type),
-        title: Text(
-          '${res.name} · ${res.amount.toStringAsFixed(0)} ${res.unit}',
-          style: AppTextStyles.bodyBold.copyWith(color: AppColors.textPrimary),
+  Widget _buildResourceCard(
+    NutritionResource res, {
+    required bool selected,
+    required bool suggested,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: selected ? AppColors.primaryGreen : AppColors.border,
+            width: selected ? 2 : 1,
+          ),
         ),
-        onTap: () {
-          final index = _tempResources.indexOf(res);
-          if (index != -1) {
-            _showEditResourceDialog(context, index);
-          }
-        },
+        child: ListTile(
+          leading: _buildResourceCircularIcon(res.type),
+          title: Text(
+            '${res.name} · ${res.amount.toStringAsFixed(0)} ${res.unit}',
+            style: AppTextStyles.bodyBold.copyWith(
+              color: AppColors.textPrimary,
+            ),
+          ),
+          subtitle: suggested
+              ? Text(
+                  'Sugerido para los animales elegidos',
+                  style: AppTextStyles.caption.copyWith(
+                    color: AppColors.primaryGreen,
+                  ),
+                )
+              : null,
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              IconButton(
+                tooltip: 'Editar cantidad',
+                icon: const Icon(Icons.edit_outlined),
+                color: AppColors.textSecondary,
+                onPressed: () {
+                  final index = _tempResources.indexOf(res);
+                  if (index != -1) {
+                    _showEditResourceDialog(context, index);
+                  }
+                },
+              ),
+              Checkbox(
+                value: selected,
+                activeColor: AppColors.primaryGreen,
+                onChanged: (_) => _toggleResource(res),
+              ),
+            ],
+          ),
+          onTap: () {
+            _toggleResource(res);
+          },
+        ),
       ),
     );
+  }
+
+  void _toggleResource(NutritionResource resource) {
+    setState(() {
+      final key = _resourceKey(resource);
+      if (!_selectedResourceKeys.remove(key)) {
+        _selectedResourceKeys.add(key);
+      }
+    });
   }
 
   Widget _buildPhotoUploadSection(DataProvider provider) {
@@ -1333,7 +1748,12 @@ class _NutricionScreenState extends State<NutricionScreen> with TickerProviderSt
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Guía para una correcta captura:', style: AppTextStyles.caption.copyWith(fontWeight: FontWeight.bold)),
+                Text(
+                  'Guía para una correcta captura:',
+                  style: AppTextStyles.caption.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
                 const SizedBox(height: 4),
                 _guideBullet("Animal de pie sobre terreno plano."),
                 _guideBullet("Perfil lateral completo del cuerpo."),
@@ -1363,7 +1783,13 @@ class _NutricionScreenState extends State<NutricionScreen> with TickerProviderSt
                         children: [
                           const CircularProgressIndicator(color: Colors.white),
                           const SizedBox(height: 8),
-                          Text('Subiendo y analizando...', style: AppTextStyles.caption.copyWith(color: Colors.white, fontWeight: FontWeight.bold)),
+                          Text(
+                            'Subiendo y analizando...',
+                            style: AppTextStyles.caption.copyWith(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                         ],
                       ),
                     )
@@ -1375,27 +1801,39 @@ class _NutricionScreenState extends State<NutricionScreen> with TickerProviderSt
             children: [
               Expanded(
                 child: ElevatedButton.icon(
-                  onPressed: _isUploadingPhoto ? null : () => _pickAndUploadImage(ImageSource.camera, provider),
+                  onPressed: _isUploadingPhoto
+                      ? null
+                      : () => _pickAndUploadImage(ImageSource.camera, provider),
                   icon: const Icon(Icons.camera_rounded, size: 18),
-                  label: const Text('Tomar Foto', style: TextStyle(fontSize: 12)),
+                  label: const Text(
+                    'Tomar Foto',
+                    style: TextStyle(fontSize: 12),
+                  ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primaryGreen,
                     foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                   ),
                 ),
               ),
               const SizedBox(width: 8),
               Expanded(
                 child: ElevatedButton.icon(
-                  onPressed: _isUploadingPhoto ? null : () => _pickAndUploadImage(ImageSource.gallery, provider),
+                  onPressed: _isUploadingPhoto
+                      ? null
+                      : () =>
+                            _pickAndUploadImage(ImageSource.gallery, provider),
                   icon: const Icon(Icons.photo_library_rounded, size: 18),
                   label: const Text('Galería', style: TextStyle(fontSize: 12)),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.sandBeige,
                     foregroundColor: AppColors.textPrimary,
                     elevation: 0,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                   ),
                 ),
               ),
@@ -1405,15 +1843,27 @@ class _NutricionScreenState extends State<NutricionScreen> with TickerProviderSt
             const Divider(height: 24),
             Row(
               children: [
-                const Icon(Icons.auto_awesome_rounded, color: AppColors.primaryGreen, size: 18),
+                const Icon(
+                  Icons.auto_awesome_rounded,
+                  color: AppColors.primaryGreen,
+                  size: 18,
+                ),
                 const SizedBox(width: 6),
-                Text('Resultado de Análisis de IA:', style: AppTextStyles.caption.copyWith(fontWeight: FontWeight.bold)),
+                Text(
+                  'Resultado de Análisis de IA:',
+                  style: AppTextStyles.caption.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: 6),
             Text(
               'Condición Corporal Estimada: ${_photoAnalysisResult!['body_condition_estimated'] ?? "N/A"}',
-              style: AppTextStyles.caption.copyWith(fontWeight: FontWeight.bold, color: AppColors.primaryGreenDark),
+              style: AppTextStyles.caption.copyWith(
+                fontWeight: FontWeight.bold,
+                color: AppColors.primaryGreenDark,
+              ),
             ),
             const SizedBox(height: 4),
             Text(
@@ -1426,7 +1876,11 @@ class _NutricionScreenState extends State<NutricionScreen> with TickerProviderSt
     );
   }
 
-  Widget _buildGroupFilters(DataProvider provider, List<Animal> filtered, double avgWeight) {
+  Widget _buildGroupFilters(
+    DataProvider provider,
+    List<Animal> filtered,
+    double avgWeight,
+  ) {
     // Extraer fincas, lotes y potreros únicos
     final fincas = provider.animals.map((a) => a.finca).toSet().toList();
     final lotes = provider.animals.map((a) => a.lote).toSet().toList();
@@ -1448,7 +1902,10 @@ class _NutricionScreenState extends State<NutricionScreen> with TickerProviderSt
             value: _filterFinca,
             hint: Text('Filtrar por Finca', style: AppTextStyles.caption),
             items: [
-              const DropdownMenuItem(value: null, child: Text('Todas las Fincas')),
+              const DropdownMenuItem(
+                value: null,
+                child: Text('Todas las Fincas'),
+              ),
               ...fincas.map((f) => DropdownMenuItem(value: f, child: Text(f))),
             ],
             onChanged: (val) => setState(() => _filterFinca = val),
@@ -1462,7 +1919,9 @@ class _NutricionScreenState extends State<NutricionScreen> with TickerProviderSt
                   hint: Text('Lote', style: AppTextStyles.caption),
                   items: [
                     const DropdownMenuItem(value: null, child: Text('Todos')),
-                    ...lotes.map((l) => DropdownMenuItem(value: l, child: Text(l))),
+                    ...lotes.map(
+                      (l) => DropdownMenuItem(value: l, child: Text(l)),
+                    ),
                   ],
                   onChanged: (val) => setState(() => _filterLote = val),
                 ),
@@ -1474,7 +1933,9 @@ class _NutricionScreenState extends State<NutricionScreen> with TickerProviderSt
                   hint: Text('Potrero', style: AppTextStyles.caption),
                   items: [
                     const DropdownMenuItem(value: null, child: Text('Todos')),
-                    ...potreros.map((p) => DropdownMenuItem(value: p, child: Text(p))),
+                    ...potreros.map(
+                      (p) => DropdownMenuItem(value: p, child: Text(p)),
+                    ),
                   ],
                   onChanged: (val) => setState(() => _filterPotrero = val),
                 ),
@@ -1493,7 +1954,12 @@ class _NutricionScreenState extends State<NutricionScreen> with TickerProviderSt
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text('Peso Promedio Calculado:', style: AppTextStyles.caption),
-              Text('${avgWeight.toStringAsFixed(0)} kg', style: AppTextStyles.bodyBold.copyWith(color: AppColors.primaryGreenDark)),
+              Text(
+                '${avgWeight.toStringAsFixed(0)} kg',
+                style: AppTextStyles.bodyBold.copyWith(
+                  color: AppColors.primaryGreenDark,
+                ),
+              ),
             ],
           ),
         ],
@@ -1502,9 +1968,13 @@ class _NutricionScreenState extends State<NutricionScreen> with TickerProviderSt
   }
 
   Widget _buildIndividualAnimalFicha(DataProvider provider) {
-    final animal = provider.animals.firstWhere((a) => a.id == _selectedAnimalId);
+    final animal = provider.animals.firstWhere(
+      (a) => a.id == _selectedAnimalId,
+    );
     // Calcular edad aproximada en meses
-    final age = DateTime.now().difference(DateTime.parse(animal.birthDate)).inDays ~/ 30;
+    final age =
+        DateTime.now().difference(DateTime.parse(animal.birthDate)).inDays ~/
+        30;
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -1521,7 +1991,11 @@ class _NutricionScreenState extends State<NutricionScreen> with TickerProviderSt
               CircleAvatar(
                 backgroundColor: AppColors.primaryGreen,
                 radius: 20,
-                child: const Icon(Icons.pets_rounded, color: Colors.white, size: 20),
+                child: const Icon(
+                  Icons.pets_rounded,
+                  color: Colors.white,
+                  size: 20,
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -1529,7 +2003,10 @@ class _NutricionScreenState extends State<NutricionScreen> with TickerProviderSt
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(animal.name, style: AppTextStyles.bodyBold),
-                    Text('Arete: ${animal.tag} • Raza: ${animal.breed}', style: AppTextStyles.caption),
+                    Text(
+                      'Arete: ${animal.tag} • Raza: ${animal.breed}',
+                      style: AppTextStyles.caption,
+                    ),
                   ],
                 ),
               ),
@@ -1553,7 +2030,10 @@ class _NutricionScreenState extends State<NutricionScreen> with TickerProviderSt
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: AppTextStyles.caption.copyWith(fontWeight: FontWeight.bold)),
+          Text(
+            label,
+            style: AppTextStyles.caption.copyWith(fontWeight: FontWeight.bold),
+          ),
           Text(val, style: AppTextStyles.caption),
         ],
       ),
@@ -1562,25 +2042,65 @@ class _NutricionScreenState extends State<NutricionScreen> with TickerProviderSt
 
   Widget _buildStep2Recursos(DataProvider provider) {
     _initializeTempResources(provider);
+    _initializeResourceSuggestions(provider);
+    final recommendedTypes = _recommendedResourceTypes(provider);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const SizedBox(height: 12),
-        Text('Agrega lo que tienes', style: AppTextStyles.h2),
+        Text('Elige los recursos de la ración', style: AppTextStyles.h2),
+        const SizedBox(height: 6),
+        Text(
+          'Selecciona lo que quieres darles. AURA marcó opciones recomendadas según los animales del paso anterior.',
+          style: AppTextStyles.caption,
+        ),
         const SizedBox(height: 16),
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Expanded(child: _buildActionIconButton('Hablar', Icons.mic_rounded, () => _startVoiceDictation(context))),
+            Expanded(
+              child: _buildActionIconButton(
+                'Hablar',
+                Icons.mic_rounded,
+                () => _startVoiceDictation(context),
+              ),
+            ),
             const SizedBox(width: 8),
-            Expanded(child: _buildActionIconButton('Escribir', Icons.keyboard_rounded, () => _showTextInputDialog(context))),
+            Expanded(
+              child: _buildActionIconButton(
+                'Escribir',
+                Icons.keyboard_rounded,
+                () => _showTextInputDialog(context),
+              ),
+            ),
             const SizedBox(width: 8),
-            Expanded(child: _buildActionIconButton('Desde mi inventario', Icons.warehouse_rounded, () => _addFromInventory(provider))),
+            Expanded(
+              child: _buildActionIconButton(
+                'Desde mi inventario',
+                Icons.warehouse_rounded,
+                () => _addFromInventory(provider),
+              ),
+            ),
           ],
         ),
         const SizedBox(height: 24),
-        Text('Disponible en tu finca', style: AppTextStyles.bodyBold),
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                'Disponible en tu finca',
+                style: AppTextStyles.bodyBold,
+              ),
+            ),
+            Text(
+              '${_selectedResources.length} seleccionados',
+              style: AppTextStyles.caption.copyWith(
+                color: AppColors.primaryGreen,
+              ),
+            ),
+          ],
+        ),
         const SizedBox(height: 12),
         if (_tempResources.isEmpty)
           Center(
@@ -1593,7 +2113,13 @@ class _NutricionScreenState extends State<NutricionScreen> with TickerProviderSt
             ),
           )
         else
-          ..._tempResources.map((res) => _buildResourceCard(res)),
+          ..._tempResources.map(
+            (res) => _buildResourceCard(
+              res,
+              selected: _selectedResourceKeys.contains(_resourceKey(res)),
+              suggested: recommendedTypes.contains(res.type.toLowerCase()),
+            ),
+          ),
         const SizedBox(height: 16),
         Center(
           child: TextButton(
@@ -1605,10 +2131,16 @@ class _NutricionScreenState extends State<NutricionScreen> with TickerProviderSt
               children: [
                 Text(
                   'Ver todos mis recursos',
-                  style: AppTextStyles.bodyBold.copyWith(color: AppColors.primaryGreen),
+                  style: AppTextStyles.bodyBold.copyWith(
+                    color: AppColors.primaryGreen,
+                  ),
                 ),
                 const SizedBox(width: 4),
-                const Icon(Icons.chevron_right_rounded, color: AppColors.primaryGreen, size: 20),
+                const Icon(
+                  Icons.chevron_right_rounded,
+                  color: AppColors.primaryGreen,
+                  size: 20,
+                ),
               ],
             ),
           ),
@@ -1620,14 +2152,19 @@ class _NutricionScreenState extends State<NutricionScreen> with TickerProviderSt
   void _addFromInventory(DataProvider provider) {
     setState(() {
       for (var res in provider.nutritionResources) {
-        if (!_tempResources.any((r) => r.name.toLowerCase() == res.name.toLowerCase())) {
+        if (!_tempResources.any(
+          (r) => r.name.toLowerCase() == res.name.toLowerCase(),
+        )) {
           _tempResources.add(res);
+        }
+        if (res.amount > 0) {
+          _selectedResourceKeys.add(_resourceKey(res));
         }
       }
     });
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        content: Text('Insumos de tu inventario agregados al plan.'),
+        content: Text('Insumos disponibles seleccionados para el plan.'),
         backgroundColor: AppColors.primaryGreen,
       ),
     );
@@ -1639,15 +2176,20 @@ class _NutricionScreenState extends State<NutricionScreen> with TickerProviderSt
       context: context,
       builder: (context) {
         return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
           title: Text('Escribe lo que tienes', style: AppTextStyles.bodyBold),
           content: TextField(
             controller: textController,
             maxLines: 3,
             decoration: InputDecoration(
-              hintText: 'Ej: Tengo 10 ha de Kikuyo y 5 toneladas de Silo de maíz',
+              hintText:
+                  'Ej: Tengo 10 ha de Kikuyo y 5 toneladas de Silo de maíz',
               hintStyle: AppTextStyles.caption,
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
             style: AppTextStyles.body,
           ),
@@ -1657,12 +2199,17 @@ class _NutricionScreenState extends State<NutricionScreen> with TickerProviderSt
               child: const Text('Cancelar'),
             ),
             ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: AppColors.primaryGreen),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primaryGreen,
+              ),
               onPressed: () {
                 _parseTextAndUpdateResources(textController.text);
                 Navigator.pop(context);
               },
-              child: const Text('Extraer', style: TextStyle(color: Colors.white)),
+              child: const Text(
+                'Extraer',
+                style: TextStyle(color: Colors.white),
+              ),
             ),
           ],
         );
@@ -1670,69 +2217,82 @@ class _NutricionScreenState extends State<NutricionScreen> with TickerProviderSt
     );
   }
 
-  Widget _buildStep3ResourceCard(NutritionResource res, int index) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: ListTile(
-        leading: _buildResourceCircularIcon(res.type),
-        title: Text(
-          '${res.name} · ${res.amount.toStringAsFixed(0)} ${res.unit}',
-          style: AppTextStyles.bodyBold.copyWith(color: AppColors.textPrimary),
-        ),
-        subtitle: Text(
-          'Disponible',
-          style: AppTextStyles.caption.copyWith(
-            color: AppColors.primaryGreen,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        trailing: Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: AppColors.greenSurface,
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: const Icon(
-            Icons.edit_square,
-            size: 18,
-            color: AppColors.primaryGreen,
-          ),
-        ),
-        onTap: () => _showEditResourceDialog(context, index),
-      ),
-    );
-  }
-
   Widget _buildStep3Confirmar(DataProvider provider) {
     _initializeTempResources(provider);
+    final selected = _selectedResources;
+    final selectedTypes = selected.map((r) => r.type.toLowerCase()).toSet();
+    final recommendedTypes = _recommendedResourceTypes(provider);
+    final missingTypes = recommendedTypes.difference(selectedTypes);
+    final animals = _targetAnimals(provider);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const SizedBox(height: 12),
-        Text('Confirma tus recursos', style: AppTextStyles.h2),
+        Text('Preparación del plan', style: AppTextStyles.h2),
+        const SizedBox(height: 6),
+        Text(
+          'Revisa la cobertura detectada localmente antes de generar la ración.',
+          style: AppTextStyles.caption,
+        ),
         const SizedBox(height: 16),
-        if (_tempResources.isEmpty)
-          Center(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 24),
-              child: Text(
-                'No hay recursos seleccionados para el plan. Regresa al paso anterior.',
-                style: AppTextStyles.caption,
-                textAlign: TextAlign.center,
-              ),
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: missingTypes.isEmpty
+                ? AppColors.greenSurface
+                : AppColors.sandBeige,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: missingTypes.isEmpty
+                  ? AppColors.primaryGreen
+                  : AppColors.border,
             ),
-          )
-        else
-          ...List.generate(_tempResources.length, (index) {
-            final res = _tempResources[index];
-            return _buildStep3ResourceCard(res, index);
-          }),
+          ),
+          child: Column(
+            children: [
+              _buildPlanCheckRow(
+                Icons.pets_rounded,
+                'Animales incluidos',
+                '${animals.length}',
+                animals.isNotEmpty,
+              ),
+              _buildPlanCheckRow(
+                Icons.inventory_2_rounded,
+                'Recursos elegidos',
+                '${selected.length}',
+                selected.isNotEmpty,
+              ),
+              _buildPlanCheckRow(
+                Icons.grass_rounded,
+                'Base de forraje',
+                selectedTypes.contains('pasto') ||
+                        selectedTypes.contains('silo')
+                    ? 'Cubierta'
+                    : 'Faltante',
+                selectedTypes.contains('pasto') ||
+                    selectedTypes.contains('silo'),
+              ),
+              _buildPlanCheckRow(
+                Icons.balance_rounded,
+                'Cobertura recomendada',
+                missingTypes.isEmpty
+                    ? 'Completa'
+                    : '${missingTypes.length} por revisar',
+                missingTypes.isEmpty,
+              ),
+            ],
+          ),
+        ),
+        if (missingTypes.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          Text(
+            'Podrías agregar: ${missingTypes.map(_resourceTypeLabel).join(', ')}. Puedes continuar; el plan se ajustará a lo seleccionado.',
+            style: AppTextStyles.caption.copyWith(
+              color: AppColors.textSecondary,
+            ),
+          ),
+        ],
         const Divider(height: 28),
         Text('Consideraciones Especiales', style: AppTextStyles.bodyBold),
         const SizedBox(height: 6),
@@ -1793,6 +2353,50 @@ class _NutricionScreenState extends State<NutricionScreen> with TickerProviderSt
     );
   }
 
+  String _resourceTypeLabel(String type) {
+    switch (type) {
+      case 'pasto':
+        return 'pasto';
+      case 'silo':
+        return 'silo';
+      case 'concentrado':
+        return 'concentrado energético';
+      case 'suplemento':
+        return 'sales o suplemento mineral';
+      default:
+        return type;
+    }
+  }
+
+  Widget _buildPlanCheckRow(
+    IconData icon,
+    String label,
+    String value,
+    bool ready,
+  ) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        children: [
+          Icon(
+            icon,
+            size: 20,
+            color: ready ? AppColors.primaryGreen : AppColors.textSecondary,
+          ),
+          const SizedBox(width: 10),
+          Expanded(child: Text(label, style: AppTextStyles.body)),
+          Text(
+            value,
+            style: AppTextStyles.caption.copyWith(
+              color: ready ? AppColors.primaryGreen : AppColors.textSecondary,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _guideBullet(String text) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 4),
@@ -1806,15 +2410,26 @@ class _NutricionScreenState extends State<NutricionScreen> with TickerProviderSt
     );
   }
 
-  Widget _buildConsiderationTile(String title, String subtitle, bool val, ValueChanged<bool?> onChanged) {
+  Widget _buildConsiderationTile(
+    String title,
+    String subtitle,
+    bool val,
+    ValueChanged<bool?> onChanged,
+  ) {
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       elevation: 0,
       color: val ? AppColors.greenSurface : AppColors.surface,
       child: CheckboxListTile(
-        title: Text(title, style: AppTextStyles.bodyBold.copyWith(fontSize: 13)),
-        subtitle: Text(subtitle, style: AppTextStyles.caption.copyWith(fontSize: 11)),
+        title: Text(
+          title,
+          style: AppTextStyles.bodyBold.copyWith(fontSize: 13),
+        ),
+        subtitle: Text(
+          subtitle,
+          style: AppTextStyles.caption.copyWith(fontSize: 11),
+        ),
         value: val,
         onChanged: onChanged,
         activeColor: AppColors.primaryGreen,
@@ -1842,7 +2457,9 @@ class _NutricionScreenState extends State<NutricionScreen> with TickerProviderSt
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primaryGreen,
                   foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
                   elevation: 0,
                 ),
                 child: Text(
@@ -1891,8 +2508,13 @@ class _NutricionScreenState extends State<NutricionScreen> with TickerProviderSt
                 backgroundColor: AppColors.sandBeige,
                 foregroundColor: AppColors.textPrimary,
                 elevation: 0,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 12,
+                ),
               ),
               child: const Text('Atrás'),
             )
@@ -1911,7 +2533,9 @@ class _NutricionScreenState extends State<NutricionScreen> with TickerProviderSt
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.primaryGreen,
               foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
             ),
             child: const Text('Siguiente'),
@@ -1929,31 +2553,57 @@ class _NutricionScreenState extends State<NutricionScreen> with TickerProviderSt
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Container(
-            padding: const EdgeInsets.all(16),
-            decoration: const BoxDecoration(
-              color: AppColors.greenSurface,
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(Icons.auto_awesome_rounded, color: AppColors.primaryGreen, size: 40),
-          )
+                padding: const EdgeInsets.all(16),
+                decoration: const BoxDecoration(
+                  color: AppColors.greenSurface,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.auto_awesome_rounded,
+                  color: AppColors.primaryGreen,
+                  size: 40,
+                ),
+              )
               .animate(onPlay: (controller) => controller.repeat(reverse: true))
-              .scale(begin: const Offset(0.9, 0.9), end: const Offset(1.15, 1.15), duration: 800.ms, curve: Curves.easeInOut),
+              .scale(
+                begin: const Offset(0.9, 0.9),
+                end: const Offset(1.15, 1.15),
+                duration: 800.ms,
+                curve: Curves.easeInOut,
+              ),
           const SizedBox(height: 24),
           Text(
-            _loadingMsgIndex == 0
-                ? 'Calculando requerimientos...'
-                : _loadingMsgIndex == 1
+                _loadingMsgIndex == 0
+                    ? 'Calculando requerimientos...'
+                    : _loadingMsgIndex == 1
                     ? 'Comparando alimentos disponibles...'
                     : _loadingMsgIndex == 2
-                        ? 'Diseñando el plan AURA...'
-                        : 'Generando recomendaciones...',
-            key: ValueKey(_loadingMsgIndex),
-            textAlign: TextAlign.center,
-            style: AppTextStyles.h2.copyWith(color: AppColors.primaryGreenDark),
-          ).animate().fadeIn(duration: 200.ms).slideY(begin: 0.1, end: 0, duration: 200.ms),
+                    ? 'Diseñando el plan AURA...'
+                    : 'Generando recomendaciones...',
+                key: ValueKey(_loadingMsgIndex),
+                textAlign: TextAlign.center,
+                style: AppTextStyles.h2.copyWith(
+                  color: AppColors.primaryGreenDark,
+                ),
+              )
+              .animate()
+              .fadeIn(duration: 200.ms)
+              .slideY(begin: 0.1, end: 0, duration: 200.ms),
           const SizedBox(height: 12),
+          const SizedBox(
+            width: 220,
+            child: LinearProgressIndicator(
+              minHeight: 5,
+              color: AppColors.primaryGreen,
+              backgroundColor: AppColors.greenSurface,
+              borderRadius: BorderRadius.all(Radius.circular(8)),
+            ),
+          ),
+          const SizedBox(height: 16),
           Text(
-            'Optimizando ración en base a modelos biológicos y requerimientos rumiantes...',
+            _loadingElapsedSeconds < 15
+                ? 'La IA está optimizando la ración · ${_loadingElapsedSeconds}s'
+                : 'La IA sigue trabajando; si la red está saturada usaremos una alternativa rápida.',
             textAlign: TextAlign.center,
             style: AppTextStyles.body,
           ),
@@ -1971,7 +2621,12 @@ class _NutricionScreenState extends State<NutricionScreen> with TickerProviderSt
           bottomRight: Radius.circular(24),
         ),
       ),
-      padding: EdgeInsets.fromLTRB(16, MediaQuery.of(context).padding.top + 12, 16, 16),
+      padding: EdgeInsets.fromLTRB(
+        16,
+        MediaQuery.of(context).padding.top + 12,
+        16,
+        16,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -2021,7 +2676,10 @@ class _NutricionScreenState extends State<NutricionScreen> with TickerProviderSt
               Row(
                 children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.white.withOpacity(0.15),
                       borderRadius: BorderRadius.circular(20),
@@ -2029,11 +2687,7 @@ class _NutricionScreenState extends State<NutricionScreen> with TickerProviderSt
                     ),
                     child: Row(
                       children: [
-                        const Icon(
-                          Icons.wifi,
-                          color: Colors.white,
-                          size: 12,
-                        ),
+                        const Icon(Icons.wifi, color: Colors.white, size: 12),
                         const SizedBox(width: 4),
                         Text(
                           'Conectado',
@@ -2140,18 +2794,30 @@ class _NutricionScreenState extends State<NutricionScreen> with TickerProviderSt
 
   @override
   Widget build(BuildContext context) {
-    final role = Provider.of<DataProvider>(context, listen: false).profile?['role'] ?? 'Ganadero';
+    final role =
+        Provider.of<DataProvider>(context, listen: false).profile?['role'] ??
+        'Ganadero';
     return Scaffold(
       body: Consumer<DataProvider>(
         builder: (context, provider, child) {
           if (provider.isLoading) {
-            return const Center(child: CircularProgressIndicator(color: AppColors.primaryGreen));
+            return const Center(
+              child: CircularProgressIndicator(color: AppColors.primaryGreen),
+            );
           }
 
-          final pastos = provider.nutritionResources.where((r) => r.type == 'pasto').toList();
-          final silos = provider.nutritionResources.where((r) => r.type == 'silo').toList();
-          final concentrados = provider.nutritionResources.where((r) => r.type == 'concentrado').toList();
-          final suplementos = provider.nutritionResources.where((r) => r.type == 'suplemento').toList();
+          final pastos = provider.nutritionResources
+              .where((r) => r.type == 'pasto')
+              .toList();
+          final silos = provider.nutritionResources
+              .where((r) => r.type == 'silo')
+              .toList();
+          final concentrados = provider.nutritionResources
+              .where((r) => r.type == 'concentrado')
+              .toList();
+          final suplementos = provider.nutritionResources
+              .where((r) => r.type == 'suplemento')
+              .toList();
 
           return Column(
             children: [
@@ -2168,12 +2834,17 @@ class _NutricionScreenState extends State<NutricionScreen> with TickerProviderSt
                         : Column(
                             children: [
                               Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 16),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                ),
                                 child: _buildStepIndicator(),
                               ),
                               Expanded(
                                 child: ListView(
-                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 8,
+                                  ),
                                   children: [
                                     _buildStepContent(provider),
                                     const SizedBox(height: 80),
@@ -2195,7 +2866,10 @@ class _NutricionScreenState extends State<NutricionScreen> with TickerProviderSt
                             ElevatedButton.icon(
                               onPressed: () {
                                 _initializeTempResources(provider);
-                                _showAddResourceDialog(context, isInventory: true);
+                                _showAddResourceDialog(
+                                  context,
+                                  isInventory: true,
+                                );
                               },
                               icon: const Icon(Icons.add, size: 18),
                               label: const Text('Registrar Insumo'),
@@ -2203,17 +2877,38 @@ class _NutricionScreenState extends State<NutricionScreen> with TickerProviderSt
                                 backgroundColor: AppColors.primaryGreen,
                                 foregroundColor: Colors.white,
                                 elevation: 0,
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 8,
+                                ),
                               ),
                             ),
                           ],
                         ),
                         const SizedBox(height: 16),
-                        _buildInventoryListSection(provider, 'Pastos 🌾', pastos),
-                        _buildInventoryListSection(provider, 'Forrajes y Silos 🚜', silos),
-                        _buildInventoryListSection(provider, 'Concentrados 📦', concentrados),
-                        _buildInventoryListSection(provider, 'Suplementos / Sales 🧪', suplementos),
+                        _buildInventoryListSection(
+                          provider,
+                          'Pastos 🌾',
+                          pastos,
+                        ),
+                        _buildInventoryListSection(
+                          provider,
+                          'Forrajes y Silos 🚜',
+                          silos,
+                        ),
+                        _buildInventoryListSection(
+                          provider,
+                          'Concentrados 📦',
+                          concentrados,
+                        ),
+                        _buildInventoryListSection(
+                          provider,
+                          'Suplementos / Sales 🧪',
+                          suplementos,
+                        ),
                       ],
                     ),
 
@@ -2221,13 +2916,19 @@ class _NutricionScreenState extends State<NutricionScreen> with TickerProviderSt
                     ListView(
                       padding: const EdgeInsets.fromLTRB(16, 8, 16, 120),
                       children: [
-                        Text('Historial de Planes Generados', style: AppTextStyles.h3),
+                        Text(
+                          'Historial de Planes Generados',
+                          style: AppTextStyles.h3,
+                        ),
                         const SizedBox(height: 12),
                         if (provider.nutritionPlans.isEmpty)
                           Padding(
                             padding: const EdgeInsets.symmetric(vertical: 40),
                             child: Center(
-                              child: Text('No hay planes nutricionales guardados aún.', style: AppTextStyles.body),
+                              child: Text(
+                                'No hay planes nutricionales guardados aún.',
+                                style: AppTextStyles.body,
+                              ),
                             ),
                           )
                         else
@@ -2248,7 +2949,8 @@ class _NutricionScreenState extends State<NutricionScreen> with TickerProviderSt
                                     MaterialPageRoute(
                                       builder: (context) => PlanDetailScreen(
                                         plan: plan,
-                                        onPrefillPlan: (target) => _prefillTarget(target, provider),
+                                        onPrefillPlan: (target) =>
+                                            _prefillTarget(target, provider),
                                       ),
                                     ),
                                   );
@@ -2256,14 +2958,20 @@ class _NutricionScreenState extends State<NutricionScreen> with TickerProviderSt
                                 child: Padding(
                                   padding: const EdgeInsets.all(16),
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Row(
-                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.spaceBetween,
                                         children: [
                                           Text(
                                             plan.targetGroup,
-                                            style: AppTextStyles.bodyBold.copyWith(color: AppColors.primaryGreenDark),
+                                            style: AppTextStyles.bodyBold
+                                                .copyWith(
+                                                  color: AppColors
+                                                      .primaryGreenDark,
+                                                ),
                                           ),
                                           _statusBadge(plan.status),
                                         ],
@@ -2271,13 +2979,17 @@ class _NutricionScreenState extends State<NutricionScreen> with TickerProviderSt
                                       const SizedBox(height: 10),
                                       Text(
                                         'Dieta: ${plan.suggestedDiet}',
-                                        style: AppTextStyles.body.copyWith(color: AppColors.textPrimary, fontSize: 13),
+                                        style: AppTextStyles.body.copyWith(
+                                          color: AppColors.textPrimary,
+                                          fontSize: 13,
+                                        ),
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
                                       ),
                                       const SizedBox(height: 4),
                                       Row(
-                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.spaceBetween,
                                         children: [
                                           Text(
                                             'Costo: \$${plan.estimatedCostPerDay.toStringAsFixed(2)} / animal / día',
@@ -2285,19 +2997,29 @@ class _NutricionScreenState extends State<NutricionScreen> with TickerProviderSt
                                           ),
                                           Text(
                                             _formatDateTime(plan.createdAt),
-                                            style: AppTextStyles.caption.copyWith(fontSize: 11),
+                                            style: AppTextStyles.caption
+                                                .copyWith(fontSize: 11),
                                           ),
                                         ],
                                       ),
                                       const Divider(height: 20),
                                       Row(
-                                        mainAxisAlignment: MainAxisAlignment.end,
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.end,
                                         children: [
-                                          const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: AppColors.primaryGreen),
+                                          const Icon(
+                                            Icons.arrow_forward_ios_rounded,
+                                            size: 14,
+                                            color: AppColors.primaryGreen,
+                                          ),
                                           const SizedBox(width: 4),
                                           Text(
                                             'Ver Plan Premium',
-                                            style: AppTextStyles.caption.copyWith(color: AppColors.primaryGreen, fontWeight: FontWeight.bold),
+                                            style: AppTextStyles.caption
+                                                .copyWith(
+                                                  color: AppColors.primaryGreen,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
                                           ),
                                         ],
                                       ),
@@ -2319,25 +3041,42 @@ class _NutricionScreenState extends State<NutricionScreen> with TickerProviderSt
     );
   }
 
-  Widget _buildInventoryListSection(DataProvider provider, String title, List<NutritionResource> list) {
+  Widget _buildInventoryListSection(
+    DataProvider provider,
+    String title,
+    List<NutritionResource> list,
+  ) {
     if (list.isEmpty) return const SizedBox.shrink();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
           padding: const EdgeInsets.symmetric(vertical: 8),
-          child: Text(title, style: AppTextStyles.bodyBold.copyWith(color: AppColors.primaryGreenDark)),
+          child: Text(
+            title,
+            style: AppTextStyles.bodyBold.copyWith(
+              color: AppColors.primaryGreenDark,
+            ),
+          ),
         ),
         ...list.map((res) {
           return Card(
             margin: const EdgeInsets.only(bottom: 8),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: const BorderSide(color: AppColors.border)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+              side: const BorderSide(color: AppColors.border),
+            ),
             elevation: 0,
             child: ListTile(
               title: Text(res.name, style: AppTextStyles.bodyBold),
-              subtitle: Text('${res.amount} ${res.unit} | Costo: \$${(res.cost ?? 0.0).toStringAsFixed(2)} | Estado: ${res.availability}'),
+              subtitle: Text(
+                '${res.amount} ${res.unit} | Costo: \$${(res.cost ?? 0.0).toStringAsFixed(2)} | Estado: ${res.availability}',
+              ),
               trailing: IconButton(
-                icon: const Icon(Icons.delete_outline_rounded, color: AppColors.alertRed),
+                icon: const Icon(
+                  Icons.delete_outline_rounded,
+                  color: AppColors.alertRed,
+                ),
                 onPressed: () {
                   if (res.id != null) provider.removeNutritionResource(res.id!);
                 },
@@ -2370,7 +3109,20 @@ class _NutricionScreenState extends State<NutricionScreen> with TickerProviderSt
   String _formatDateTime(String dateStr) {
     try {
       final dt = DateTime.parse(dateStr).toLocal();
-      final months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+      final months = [
+        'Ene',
+        'Feb',
+        'Mar',
+        'Abr',
+        'May',
+        'Jun',
+        'Jul',
+        'Ago',
+        'Sep',
+        'Oct',
+        'Nov',
+        'Dic',
+      ];
       return '${dt.day.toString().padLeft(2, '0')} ${months[dt.month - 1]} ${dt.year}, ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
     } catch (_) {}
     return dateStr;

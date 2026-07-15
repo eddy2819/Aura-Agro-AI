@@ -26,6 +26,8 @@ class MarketplaceItem {
   final bool vacunasAlDia;
   final bool historialCompleto;
   final bool fotosCalidad;
+  final String? sourceAnimalId;
+  final String? sellerUserId;
 
   const MarketplaceItem({
     this.id,
@@ -52,6 +54,8 @@ class MarketplaceItem {
     this.vacunasAlDia = false,
     this.historialCompleto = false,
     this.fotosCalidad = false,
+    this.sourceAnimalId,
+    this.sellerUserId,
   });
 
   Map<String, dynamic> toMap() {
@@ -80,6 +84,8 @@ class MarketplaceItem {
       'vacunas_al_dia': vacunasAlDia ? 1 : 0,
       'historial_completo': historialCompleto ? 1 : 0,
       'fotos_calidad': fotosCalidad ? 1 : 0,
+      'source_animal_id': sourceAnimalId,
+      'seller_user_id': sellerUserId,
     };
   }
 
@@ -99,7 +105,9 @@ class MarketplaceItem {
       score: map['score'] as int,
       badge: map['badge'] as String,
       price: (map['price'] as num).toDouble(),
-      referencePrice: map['reference_price'] != null ? (map['reference_price'] as num).toDouble() : null,
+      referencePrice: map['reference_price'] != null
+          ? (map['reference_price'] as num).toDouble()
+          : null,
       negotiable: map['negotiable'] == 1 || map['negotiable'] == true,
       weight: map['weight'] as String?,
       production: map['production'] as String?,
@@ -116,8 +124,11 @@ class MarketplaceItem {
       cvmState: map['cvm_state'] as String?,
       sisaVerified: map['sisa_verified'] == 1 || map['sisa_verified'] == true,
       vacunasAlDia: map['vacunas_al_dia'] == 1 || map['vacunas_al_dia'] == true,
-      historialCompleto: map['historial_completo'] == 1 || map['historial_completo'] == true,
+      historialCompleto:
+          map['historial_completo'] == 1 || map['historial_completo'] == true,
       fotosCalidad: map['fotos_calidad'] == 1 || map['fotos_calidad'] == true,
+      sourceAnimalId: map['source_animal_id'] as String?,
+      sellerUserId: map['seller_user_id'] as String?,
     );
   }
 }

@@ -5,6 +5,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../data/data_provider.dart';
 import '../theme/app_colors.dart';
 import '../widgets/navigation/liquid_glass_bottom_nav.dart';
+import '../widgets/common/keyboard_aware_padding.dart';
 import 'ganado_screen.dart';
 import 'home_screen.dart';
 import 'nutricion_screen.dart';
@@ -12,6 +13,7 @@ import 'veterinario_screen.dart';
 import 'marketplace_screen.dart';
 import 'pending_vet_screen.dart';
 import 'admin_panel_screen.dart';
+import 'inventory_screen.dart';
 
 /// Contenedor principal: maneja el índice activo y muestra
 /// la pantalla correspondiente + el bottom nav "liquid glass".
@@ -51,50 +53,79 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
 
     // Todos los roles autorizados ven Inicio
     screens.add(HomeScreen(onNavigate: _onNavigate));
-    navItems.add(const NavItem(
-      icon: LucideIcons.home,
-      activeIcon: LucideIcons.home,
-      label: 'Inicio',
-    ));
+    navItems.add(
+      const NavItem(
+        icon: LucideIcons.home,
+        activeIcon: LucideIcons.home,
+        label: 'Inicio',
+      ),
+    );
 
     if (role == 'Veterinario') {
       screens.add(const VeterinarioScreen());
-      navItems.add(const NavItem(
-        icon: LucideIcons.stethoscope,
-        activeIcon: LucideIcons.stethoscope,
-        label: 'Veterinario',
-      ));
+      navItems.add(
+        const NavItem(
+          icon: LucideIcons.stethoscope,
+          activeIcon: LucideIcons.stethoscope,
+          label: 'Veterinario',
+        ),
+      );
+      screens.add(const InventoryScreen());
+      navItems.add(
+        const NavItem(
+          icon: LucideIcons.packageSearch,
+          activeIcon: LucideIcons.packageSearch,
+          label: 'Inventario',
+        ),
+      );
       // Sin acceso comercial: no se agrega MarketplaceScreen para Veterinario
     } else if (role == 'Comprador') {
       // Comprador solo ve Inicio y Mercado
       screens.add(const MarketplaceScreen());
-      navItems.add(const NavItem(
-        icon: LucideIcons.store,
-        activeIcon: LucideIcons.store,
-        label: 'Mercado',
-      ));
+      navItems.add(
+        const NavItem(
+          icon: LucideIcons.store,
+          activeIcon: LucideIcons.store,
+          label: 'Mercado',
+        ),
+      );
     } else {
       // Ganadero / default: tiene acceso completo tradicional
       screens.add(GanadoScreen(onNavigate: _onNavigate));
-      navItems.add(const NavItem(
-        icon: LucideIcons.beef,
-        activeIcon: LucideIcons.beef,
-        label: 'Ganado',
-      ));
+      navItems.add(
+        const NavItem(
+          icon: LucideIcons.beef,
+          activeIcon: LucideIcons.beef,
+          label: 'Ganado',
+        ),
+      );
 
       screens.add(const NutricionScreen());
-      navItems.add(const NavItem(
-        icon: LucideIcons.brainCircuit,
-        activeIcon: LucideIcons.brainCircuit,
-        label: 'IA Nutrición',
-      ));
+      navItems.add(
+        const NavItem(
+          icon: LucideIcons.brainCircuit,
+          activeIcon: LucideIcons.brainCircuit,
+          label: 'IA Nutrición',
+        ),
+      );
+
+      screens.add(const InventoryScreen());
+      navItems.add(
+        const NavItem(
+          icon: LucideIcons.packageSearch,
+          activeIcon: LucideIcons.packageSearch,
+          label: 'Inventario',
+        ),
+      );
 
       screens.add(const MarketplaceScreen());
-      navItems.add(const NavItem(
-        icon: LucideIcons.store,
-        activeIcon: LucideIcons.store,
-        label: 'Mercado',
-      ));
+      navItems.add(
+        const NavItem(
+          icon: LucideIcons.store,
+          activeIcon: LucideIcons.store,
+          label: 'Mercado',
+        ),
+      );
     }
 
     // Ajustar el índice para no salir de los límites si el rol cambia en caliente
@@ -106,10 +137,12 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
       backgroundColor: AppColors.background,
       extendBody: true, // permite que el contenido pase detrás del nav glass
       body: IndexedStack(index: _currentIndex, children: screens),
-      bottomNavigationBar: LiquidGlassBottomNav(
-        currentIndex: _currentIndex,
-        onTap: _onNavigate,
-        items: navItems,
+      bottomNavigationBar: HideWhenKeyboardVisible(
+        child: LiquidGlassBottomNav(
+          currentIndex: _currentIndex,
+          onTap: _onNavigate,
+          items: navItems,
+        ),
       ),
     );
   }

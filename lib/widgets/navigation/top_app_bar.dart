@@ -5,15 +5,13 @@ import '../../screens/profile_screen.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_text_styles.dart';
 import '../common/connection_status.dart';
+import '../common/aura_brand_logo.dart';
 
 /// Barra superior reutilizable: logo AURA, badge de rol y estado de conexión
 class AuraTopBar extends StatelessWidget implements PreferredSizeWidget {
   final String role; // "Ganadero", "Veterinario", etc.
 
-  const AuraTopBar({
-    super.key,
-    this.role = 'Ganadero',
-  });
+  const AuraTopBar({super.key, this.role = 'Ganadero'});
 
   @override
   Size get preferredSize => const Size.fromHeight(64);
@@ -24,22 +22,13 @@ class AuraTopBar extends StatelessWidget implements PreferredSizeWidget {
       automaticallyImplyLeading: false,
       title: Row(
         children: [
-          Container(
-            width: 38,
-            height: 38,
-            decoration: BoxDecoration(
-              gradient: AppColors.primaryGradient,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            alignment: Alignment.center,
-            child: const Icon(LucideIcons.leaf, color: Colors.white, size: 20),
-          ),
+          const AuraBrandLogo(size: 42),
           const SizedBox(width: 10),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'AURA',
+                'AURA Agro AI',
                 style: AppTextStyles.h3.copyWith(
                   color: AppColors.primaryGreenDark,
                   fontWeight: FontWeight.w800,

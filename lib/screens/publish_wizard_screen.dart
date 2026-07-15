@@ -14,14 +14,17 @@ import '../../services/marketplace_ai_service.dart';
 import '../../widgets/marketplace/market_item_card.dart';
 
 class PublishWizardScreen extends StatefulWidget {
-  const PublishWizardScreen({super.key});
+  final MarketplaceItem? editingItem;
+
+  const PublishWizardScreen({super.key, this.editingItem});
 
   @override
   State<PublishWizardScreen> createState() => _PublishWizardScreenState();
 }
 
 class PhotoSlot {
-  final String id; // 'principal', 'lateral', 'arete', 'sena', 'marca', 'empaque', 'elaboracion'
+  final String
+  id; // 'principal', 'lateral', 'arete', 'sena', 'marca', 'empaque', 'elaboracion'
   final String label;
   final String sublabel;
   final bool isRequired;
@@ -46,9 +49,22 @@ class _PublishWizardScreenState extends State<PublishWizardScreen> {
 
   List<String> get _activeSteps {
     if (_category == 'Ganado') {
-      return ['¿Qué vendes?', 'Identificación', 'Fotos de calidad', 'Verificación', 'Datos de venta', 'Vista previa'];
+      return [
+        '¿Qué vendes?',
+        'Identificación',
+        'Fotos de calidad',
+        'Verificación',
+        'Datos de venta',
+        'Vista previa',
+      ];
     } else {
-      return ['¿Qué vendes?', 'Fotos de calidad', 'Verificación', 'Datos de venta', 'Vista previa'];
+      return [
+        '¿Qué vendes?',
+        'Fotos de calidad',
+        'Verificación',
+        'Datos de venta',
+        'Vista previa',
+      ];
     }
   }
 
@@ -58,7 +74,8 @@ class _PublishWizardScreenState extends State<PublishWizardScreen> {
 
   // Paso 2 State (Identificación)
   String _via = 'via_a'; // via_a, via_b
-  final TextEditingController _senasParticularesController = TextEditingController();
+  final TextEditingController _senasParticularesController =
+      TextEditingController();
   bool _tieneMarcaHierro = false;
 
   // Slots de Fotos State
@@ -72,28 +89,69 @@ class _PublishWizardScreenState extends State<PublishWizardScreen> {
   List<PhotoSlot> _getActivePhotoSlots() {
     if (_category != 'Ganado') {
       return [
-        PhotoSlot(id: 'principal', label: 'Producto\n(General)', sublabel: '(Obligatorio)', isRequired: true),
-        PhotoSlot(id: 'empaque', label: 'Empaque\n(Si tiene)', sublabel: '(Sugerida)', isSuggested: true),
-        PhotoSlot(id: 'elaboracion', label: 'Elaboración\n(Lugar)', sublabel: '(Sugerida)', isSuggested: true),
+        PhotoSlot(
+          id: 'principal',
+          label: 'Producto\n(General)',
+          sublabel: '(Obligatorio)',
+          isRequired: true,
+        ),
+        PhotoSlot(
+          id: 'empaque',
+          label: 'Empaque\n(Si tiene)',
+          sublabel: '(Sugerida)',
+          isSuggested: true,
+        ),
+        PhotoSlot(
+          id: 'elaboracion',
+          label: 'Elaboración\n(Lugar)',
+          sublabel: '(Sugerida)',
+          isSuggested: true,
+        ),
       ];
     }
 
     if (_via == 'via_a') {
       return [
-        PhotoSlot(id: 'principal', label: 'Principal\n(Cuerpo perfil)', sublabel: '(Obligatoria)', isRequired: true),
-        PhotoSlot(id: 'lateral', label: 'Lateral\n(Otro ángulo)', sublabel: '(Sugerida)', isSuggested: true),
-        PhotoSlot(id: 'arete', label: 'Arete\n(Acercamiento)', sublabel: '(Sugerida)', isSuggested: true),
+        PhotoSlot(
+          id: 'principal',
+          label: 'Principal\n(Cuerpo perfil)',
+          sublabel: '(Obligatoria)',
+          isRequired: true,
+        ),
+        PhotoSlot(
+          id: 'lateral',
+          label: 'Lateral\n(Otro ángulo)',
+          sublabel: '(Sugerida)',
+          isSuggested: true,
+        ),
+        PhotoSlot(
+          id: 'arete',
+          label: 'Arete\n(Acercamiento)',
+          sublabel: '(Sugerida)',
+          isSuggested: true,
+        ),
       ];
     } else {
       final List<PhotoSlot> slots = [
-        PhotoSlot(id: 'principal', label: 'Principal\n(Cuerpo perfil)', sublabel: '(Obligatoria)', isRequired: true),
-        PhotoSlot(id: 'lateral', label: 'Lateral\n(Otro ángulo)', sublabel: '(Sugerida)', isSuggested: true),
+        PhotoSlot(
+          id: 'principal',
+          label: 'Principal\n(Cuerpo perfil)',
+          sublabel: '(Obligatoria)',
+          isRequired: true,
+        ),
+        PhotoSlot(
+          id: 'lateral',
+          label: 'Lateral\n(Otro ángulo)',
+          sublabel: '(Sugerida)',
+          isSuggested: true,
+        ),
         PhotoSlot(
           id: 'sena',
           label: 'Seña particular',
           sublabel: '(Sugerida)',
           isSuggested: true,
-          helperText: 'Foto de la mancha, marca o seña que describiste — ayuda a identificar al animal con confianza.',
+          helperText:
+              'Foto de la mancha, marca o seña que describiste — ayuda a identificar al animal con confianza.',
         ),
       ];
       if (_tieneMarcaHierro) {
@@ -149,9 +207,45 @@ class _PublishWizardScreenState extends State<PublishWizardScreen> {
   @override
   void initState() {
     super.initState();
-    // Pre-load draft if exists
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _checkAndLoadDraft();
+      if (widget.editingItem != null) {
+        _loadExistingListing(widget.editingItem!);
+      } else {
+        _checkAndLoadDraft();
+      }
+    });
+  }
+
+  void _loadExistingListing(MarketplaceItem item) {
+    final provider = Provider.of<DataProvider>(context, listen: false);
+    Animal? animal;
+    for (final candidate in provider.animals) {
+      if (candidate.id == item.sourceAnimalId ||
+          item.title.contains(candidate.name)) {
+        animal = candidate;
+        break;
+      }
+    }
+    setState(() {
+      _category = item.category;
+      _selectedAnimal = animal;
+      _priceController.text = item.price.toStringAsFixed(2);
+      _descriptionController.text = item.description;
+      _location = item.location;
+      _negotiable = item.negotiable;
+      _areteSisa = item.areteSisa ?? '';
+      _cvmState = item.cvmState ?? 'none';
+      _sisaVerified = item.sisaVerified;
+      _vacunasAlDia = item.vacunasAlDia;
+      _historialCompleto = item.historialCompleto;
+      _fotosCalidad = item.fotosCalidad;
+      _imagePaths = List<String>.from(item.imagePaths);
+      _slotImages = item.imagePaths.isEmpty
+          ? {}
+          : {'principal': item.imagePaths.first};
+      _extraImagePaths = item.imagePaths.length > 1
+          ? item.imagePaths.skip(1).toList()
+          : [];
     });
   }
 
@@ -171,15 +265,20 @@ class _PublishWizardScreenState extends State<PublishWizardScreen> {
     if (draftJson != null && mounted) {
       final data = jsonDecode(draftJson);
       final animalName = data['animalName'] ?? 'tu producto';
-      
+
       showDialog(
         context: context,
         builder: (context) {
           return AlertDialog(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
             title: Row(
               children: [
-                const Icon(LucideIcons.rotateCcw, color: AppColors.primaryGreen),
+                const Icon(
+                  LucideIcons.rotateCcw,
+                  color: AppColors.primaryGreen,
+                ),
                 const SizedBox(width: 8),
                 Text('Continuar Borrador', style: AppTextStyles.h2),
               ],
@@ -194,7 +293,10 @@ class _PublishWizardScreenState extends State<PublishWizardScreen> {
                   provider.deleteListingDraft();
                   Navigator.pop(context);
                 },
-                child: Text('Empezar de nuevo', style: AppTextStyles.body.copyWith(color: AppColors.alertRed)),
+                child: Text(
+                  'Empezar de nuevo',
+                  style: AppTextStyles.body.copyWith(color: AppColors.alertRed),
+                ),
               ),
               ElevatedButton(
                 onPressed: () {
@@ -203,9 +305,14 @@ class _PublishWizardScreenState extends State<PublishWizardScreen> {
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primaryGreen,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
                 ),
-                child: Text('Continuar', style: AppTextStyles.bodyBold.copyWith(color: Colors.white)),
+                child: Text(
+                  'Continuar',
+                  style: AppTextStyles.bodyBold.copyWith(color: Colors.white),
+                ),
               ),
             ],
           );
@@ -221,10 +328,10 @@ class _PublishWizardScreenState extends State<PublishWizardScreen> {
       _via = data['via'] ?? 'via_a';
       _senasParticularesController.text = data['senasParticulares'] ?? '';
       _tieneMarcaHierro = data['tieneMarcaHierro'] ?? false;
-      
+
       final slotImagesRaw = data['slotImages'] ?? {};
       _slotImages = Map<String, String>.from(slotImagesRaw);
-      
+
       _extraImagePaths = List<String>.from(data['extraImagePaths'] ?? []);
 
       _imagePaths = List<String>.from(data['imagePaths'] ?? []);
@@ -243,7 +350,10 @@ class _PublishWizardScreenState extends State<PublishWizardScreen> {
       final animalId = data['selectedAnimalId'];
       if (animalId != null) {
         final provider = Provider.of<DataProvider>(context, listen: false);
-        _selectedAnimal = provider.animals.firstWhere((a) => a.id == animalId, orElse: () => provider.animals.first);
+        _selectedAnimal = provider.animals.firstWhere(
+          (a) => a.id == animalId,
+          orElse: () => provider.animals.first,
+        );
       }
     });
 
@@ -338,7 +448,8 @@ class _PublishWizardScreenState extends State<PublishWizardScreen> {
     if (mounted) {
       setState(() {
         _isDictating = false;
-        String dictation = "Vaca lechera muy sana y activa, produce muy buena leche todos los días y es dócil.";
+        String dictation =
+            "Vaca lechera muy sana y activa, produce muy buena leche todos los días y es dócil.";
         if (_descriptionController.text.isNotEmpty) {
           _descriptionController.text += " " + dictation;
         } else {
@@ -429,14 +540,23 @@ class _PublishWizardScreenState extends State<PublishWizardScreen> {
                           Navigator.pop(context);
                           _pickSlotImage(slotId, ImageSource.camera);
                         },
-                        icon: const Icon(LucideIcons.camera, color: Colors.white, size: 24),
+                        icon: const Icon(
+                          LucideIcons.camera,
+                          color: Colors.white,
+                          size: 24,
+                        ),
                         label: Text(
                           'Cámara',
-                          style: AppTextStyles.bodyBold.copyWith(color: Colors.white, fontSize: 16),
+                          style: AppTextStyles.bodyBold.copyWith(
+                            color: Colors.white,
+                            fontSize: 16,
+                          ),
                         ),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.primaryGreen,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
                         ),
                       ),
                     ),
@@ -450,14 +570,23 @@ class _PublishWizardScreenState extends State<PublishWizardScreen> {
                           Navigator.pop(context);
                           _pickSlotImage(slotId, ImageSource.gallery);
                         },
-                        icon: const Icon(LucideIcons.image, color: AppColors.primaryGreenDark, size: 24),
+                        icon: const Icon(
+                          LucideIcons.image,
+                          color: AppColors.primaryGreenDark,
+                          size: 24,
+                        ),
                         label: Text(
                           'Galería',
-                          style: AppTextStyles.bodyBold.copyWith(color: AppColors.primaryGreenDark, fontSize: 16),
+                          style: AppTextStyles.bodyBold.copyWith(
+                            color: AppColors.primaryGreenDark,
+                            fontSize: 16,
+                          ),
                         ),
                         style: OutlinedButton.styleFrom(
                           side: const BorderSide(color: AppColors.primaryGreen),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
                         ),
                       ),
                     ),
@@ -499,14 +628,23 @@ class _PublishWizardScreenState extends State<PublishWizardScreen> {
                           Navigator.pop(context);
                           _pickExtraImage(index, ImageSource.camera);
                         },
-                        icon: const Icon(LucideIcons.camera, color: Colors.white, size: 24),
+                        icon: const Icon(
+                          LucideIcons.camera,
+                          color: Colors.white,
+                          size: 24,
+                        ),
                         label: Text(
                           'Cámara',
-                          style: AppTextStyles.bodyBold.copyWith(color: Colors.white, fontSize: 16),
+                          style: AppTextStyles.bodyBold.copyWith(
+                            color: Colors.white,
+                            fontSize: 16,
+                          ),
                         ),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.primaryGreen,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
                         ),
                       ),
                     ),
@@ -520,14 +658,23 @@ class _PublishWizardScreenState extends State<PublishWizardScreen> {
                           Navigator.pop(context);
                           _pickExtraImage(index, ImageSource.gallery);
                         },
-                        icon: const Icon(LucideIcons.image, color: AppColors.primaryGreenDark, size: 24),
+                        icon: const Icon(
+                          LucideIcons.image,
+                          color: AppColors.primaryGreenDark,
+                          size: 24,
+                        ),
                         label: Text(
                           'Galería',
-                          style: AppTextStyles.bodyBold.copyWith(color: AppColors.primaryGreenDark, fontSize: 16),
+                          style: AppTextStyles.bodyBold.copyWith(
+                            color: AppColors.primaryGreenDark,
+                            fontSize: 16,
+                          ),
                         ),
                         style: OutlinedButton.styleFrom(
                           side: const BorderSide(color: AppColors.primaryGreen),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
                         ),
                       ),
                     ),
@@ -554,7 +701,7 @@ class _PublishWizardScreenState extends State<PublishWizardScreen> {
     if (mounted) {
       setState(() {
         _isVerifyingRequirements = false;
-        
+
         if (_category == 'Ganado' && _selectedAnimal != null) {
           _areteSisa = _selectedAnimal!.tag.replaceAll('#', 'EC-2026-00');
           _sisaVerified = true;
@@ -567,7 +714,8 @@ class _PublishWizardScreenState extends State<PublishWizardScreen> {
           _sisaVerified = true;
           _vacunasAlDia = true;
           _historialCompleto = true;
-          _cvmState = 'verified'; // Leche/Queso no necesita CVM de ganado en pie
+          _cvmState =
+              'verified'; // Leche/Queso no necesita CVM de ganado en pie
         }
       });
       _saveCurrentDraft();
@@ -583,7 +731,10 @@ class _PublishWizardScreenState extends State<PublishWizardScreen> {
       if (_category == 'Ganado' && _selectedAnimal == null) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Seleccione un animal de su hato antes de continuar', style: AppTextStyles.bodyBold.copyWith(color: Colors.white)),
+            content: Text(
+              'Seleccione un animal de su hato antes de continuar',
+              style: AppTextStyles.bodyBold.copyWith(color: Colors.white),
+            ),
             backgroundColor: AppColors.alertOrange,
           ),
         );
@@ -596,7 +747,9 @@ class _PublishWizardScreenState extends State<PublishWizardScreen> {
         _location = _selectedAnimal!.finca + ', Ecuador';
         _selectedConditions = ['Entrega en finca', 'Pago al contado'];
       } else {
-        _suggestedPrice = _category == 'Leche' ? 0.55 : (_category == 'Queso' ? 4.50 : 150);
+        _suggestedPrice = _category == 'Leche'
+            ? 0.55
+            : (_category == 'Queso' ? 4.50 : 150);
         _priceController.text = _suggestedPrice!.toString();
         _selectedConditions = ['Pago al contado'];
       }
@@ -606,7 +759,10 @@ class _PublishWizardScreenState extends State<PublishWizardScreen> {
       if (_via == 'via_b' && _senasParticularesController.text.trim().isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Por favor, describa las señas particulares del animal', style: AppTextStyles.bodyBold.copyWith(color: Colors.white)),
+            content: Text(
+              'Por favor, describa las señas particulares del animal',
+              style: AppTextStyles.bodyBold.copyWith(color: Colors.white),
+            ),
             backgroundColor: AppColors.alertOrange,
           ),
         );
@@ -618,7 +774,10 @@ class _PublishWizardScreenState extends State<PublishWizardScreen> {
       if (_slotImages['principal'] == null) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Se requiere al menos la foto principal obligatoria', style: AppTextStyles.bodyBold.copyWith(color: Colors.white)),
+            content: Text(
+              'Se requiere al menos la foto principal obligatoria',
+              style: AppTextStyles.bodyBold.copyWith(color: Colors.white),
+            ),
             backgroundColor: AppColors.alertOrange,
           ),
         );
@@ -632,7 +791,10 @@ class _PublishWizardScreenState extends State<PublishWizardScreen> {
       if (_priceController.text.trim().isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Por favor, ingrese un precio válido', style: AppTextStyles.bodyBold.copyWith(color: Colors.white)),
+            content: Text(
+              'Por favor, ingrese un precio válido',
+              style: AppTextStyles.bodyBold.copyWith(color: Colors.white),
+            ),
             backgroundColor: AppColors.alertOrange,
           ),
         );
@@ -669,31 +831,76 @@ class _PublishWizardScreenState extends State<PublishWizardScreen> {
     final price = double.tryParse(_priceController.text) ?? 1500.0;
 
     final bool isElite = _category == 'Ganado'
-        ? (_via == 'via_a' && _fotosCalidad && _sisaVerified && _vacunasAlDia && _cvmState == 'verified')
+        ? (_via == 'via_a' &&
+              _fotosCalidad &&
+              _sisaVerified &&
+              _vacunasAlDia &&
+              _cvmState == 'verified')
         : (_fotosCalidad && _cvmState == 'verified');
     final badge = isElite ? 'Elite' : 'Verificado';
 
-    await provider.publishMarketplaceItem(
-      title: _category == 'Ganado' 
-          ? '${_selectedAnimal?.category} ${_selectedAnimal?.breed} - ${_selectedAnimal?.name}'
-          : '$_category Fresco de Finca',
-      price: price,
-      category: _category,
-      weight: _selectedAnimal?.weightKg != null ? '${_selectedAnimal!.weightKg.toStringAsFixed(0)} kg' : null,
-      production: _selectedAnimal?.productionLiters,
-      location: _location,
-      negotiable: _negotiable,
-      imagePaths: _imagePaths,
-      description: _descriptionController.text.trim(),
-      score: _selectedAnimal?.score ?? 92,
-      badge: badge,
-      areteSisa: _areteSisa,
-      cvmState: _cvmState,
-      sisaVerified: _sisaVerified,
-      vacunasAlDia: _vacunasAlDia,
-      historialCompleto: _historialCompleto,
-      fotosCalidad: _fotosCalidad,
-    );
+    final title =
+        widget.editingItem?.title ??
+        (_category == 'Ganado'
+            ? '${_selectedAnimal?.category} ${_selectedAnimal?.breed} - ${_selectedAnimal?.name}'
+            : '$_category Fresco de Finca');
+    if (widget.editingItem != null) {
+      final previous = widget.editingItem!;
+      await provider.updateMarketplaceItem(
+        MarketplaceItem(
+          id: previous.id,
+          title: title,
+          price: price,
+          category: _category,
+          weight: _selectedAnimal?.weightKg != null
+              ? '${_selectedAnimal!.weightKg.toStringAsFixed(0)} kg'
+              : previous.weight,
+          production: _selectedAnimal?.productionLiters ?? previous.production,
+          negotiable: _negotiable,
+          location: _location,
+          score: _selectedAnimal?.score ?? previous.score,
+          badge: badge,
+          responseTime: previous.responseTime,
+          certified: _sisaVerified && _vacunasAlDia,
+          referencePrice: previous.referencePrice,
+          priceRange: previous.priceRange,
+          promoted: previous.promoted,
+          offerTag: previous.offerTag,
+          imagePaths: _imagePaths,
+          description: _descriptionController.text.trim(),
+          areteSisa: _areteSisa,
+          cvmState: _cvmState,
+          sisaVerified: _sisaVerified,
+          vacunasAlDia: _vacunasAlDia,
+          historialCompleto: _historialCompleto,
+          fotosCalidad: _fotosCalidad,
+          sourceAnimalId: previous.sourceAnimalId,
+          sellerUserId: previous.sellerUserId,
+        ),
+      );
+    } else {
+      await provider.publishMarketplaceItem(
+        title: title,
+        price: price,
+        category: _category,
+        weight: _selectedAnimal?.weightKg != null
+            ? '${_selectedAnimal!.weightKg.toStringAsFixed(0)} kg'
+            : null,
+        production: _selectedAnimal?.productionLiters,
+        location: _location,
+        negotiable: _negotiable,
+        imagePaths: _imagePaths,
+        description: _descriptionController.text.trim(),
+        score: _selectedAnimal?.score ?? 92,
+        badge: badge,
+        areteSisa: _areteSisa,
+        cvmState: _cvmState,
+        sisaVerified: _sisaVerified,
+        vacunasAlDia: _vacunasAlDia,
+        historialCompleto: _historialCompleto,
+        fotosCalidad: _fotosCalidad,
+      );
+    }
 
     // Delete draft
     await provider.deleteListingDraft();
@@ -729,11 +936,19 @@ class _PublishWizardScreenState extends State<PublishWizardScreen> {
                   size: 48,
                   color: AppColors.primaryGreen,
                 ),
-              ).animate().scale(delay: 200.ms, duration: 600.ms, curve: Curves.elasticOut),
+              ).animate().scale(
+                delay: 200.ms,
+                duration: 600.ms,
+                curve: Curves.elasticOut,
+              ),
               const SizedBox(height: 20),
               Text(
-                '¡Publicación Exitosa!',
-                style: AppTextStyles.h1.copyWith(color: AppColors.primaryGreenDark),
+                widget.editingItem == null
+                    ? '¡Publicación Exitosa!'
+                    : '¡Cambios guardados!',
+                style: AppTextStyles.h1.copyWith(
+                  color: AppColors.primaryGreenDark,
+                ),
               ),
               const SizedBox(height: 8),
               Text(
@@ -754,11 +969,16 @@ class _PublishWizardScreenState extends State<PublishWizardScreen> {
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primaryGreen,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
                   ),
                   child: Text(
                     'Volver al Marketplace',
-                    style: AppTextStyles.bodyBold.copyWith(color: Colors.white, fontSize: 16),
+                    style: AppTextStyles.bodyBold.copyWith(
+                      color: Colors.white,
+                      fontSize: 16,
+                    ),
                   ),
                 ),
               ),
@@ -776,10 +996,12 @@ class _PublishWizardScreenState extends State<PublishWizardScreen> {
     final stepName = _activeSteps[_currentStep];
     switch (stepName) {
       case '¿Qué vendes?':
-        message = 'Selecciona qué tipo de producto vas a vender. Si es un animal del hato, selecciónalo de la lista para verificar automáticamente sus vacunas y arete SISA.';
+        message =
+            'Selecciona qué tipo de producto vas a vender. Si es un animal del hato, selecciónalo de la lista para verificar automáticamente sus vacunas y arete SISA.';
         break;
       case 'Identificación':
-        message = 'Define si tu animal cuenta con arete oficial (Vía A) o si registrarás señas particulares de identificación (Vía B).';
+        message =
+            'Define si tu animal cuenta con arete oficial (Vía A) o si registrarás señas particulares de identificación (Vía B).';
         break;
       case 'Fotos de calidad':
         message = _category == 'Ganado'
@@ -787,13 +1009,16 @@ class _PublishWizardScreenState extends State<PublishWizardScreen> {
             : 'Sube fotos claras de tu producto. La foto principal es obligatoria.';
         break;
       case 'Verificación':
-        message = 'Aquí el sistema verifica en tiempo real que tu animal cumpla con los esquemas de vacunación oficiales de AGROCALIDAD o tus señas de identificación.';
+        message =
+            'Aquí el sistema verifica en tiempo real que tu animal cumpla con los esquemas de vacunación oficiales de AGROCALIDAD o tus señas de identificación.';
         break;
       case 'Datos de venta':
-        message = 'Define el precio. La IA te sugiere un rango de mercado. Puedes usar el dictado por voz (ícono del micrófono) para grabar la descripción sin escribir.';
+        message =
+            'Define el precio. La IA te sugiere un rango de mercado. Puedes usar el dictado por voz (ícono del micrófono) para grabar la descripción sin escribir.';
         break;
       case 'Vista previa':
-        message = 'Revisa cómo se verá tu publicación en vivo antes de subirla. Si ves algún error, puedes tocar "Atrás" para corregirlo.';
+        message =
+            'Revisa cómo se verá tu publicación en vivo antes de subirla. Si ves algún error, puedes tocar "Atrás" para corregirlo.';
         break;
     }
 
@@ -801,7 +1026,9 @@ class _PublishWizardScreenState extends State<PublishWizardScreen> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
           title: Row(
             children: [
               const Icon(LucideIcons.helpCircle, color: AppColors.primaryGreen),
@@ -815,9 +1042,14 @@ class _PublishWizardScreenState extends State<PublishWizardScreen> {
               onPressed: () => Navigator.pop(context),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primaryGreen,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
               ),
-              child: Text('Entendido', style: AppTextStyles.bodyBold.copyWith(color: Colors.white)),
+              child: Text(
+                'Entendido',
+                style: AppTextStyles.bodyBold.copyWith(color: Colors.white),
+              ),
             ),
           ],
         );
@@ -838,11 +1070,17 @@ class _PublishWizardScreenState extends State<PublishWizardScreen> {
             children: [
               Text(
                 'Paso ${_currentStep + 1} de ${steps.length}',
-                style: AppTextStyles.caption.copyWith(fontWeight: FontWeight.bold, color: AppColors.textSecondary),
+                style: AppTextStyles.caption.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textSecondary,
+                ),
               ),
               Text(
                 steps[_currentStep],
-                style: AppTextStyles.caption.copyWith(fontWeight: FontWeight.bold, color: AppColors.primaryGreenDark),
+                style: AppTextStyles.caption.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.primaryGreenDark,
+                ),
               ),
             ],
           ),
@@ -876,10 +1114,7 @@ class _PublishWizardScreenState extends State<PublishWizardScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            '¿Qué deseas publicar en el mercado?',
-            style: AppTextStyles.h2,
-          ),
+          Text('¿Qué deseas publicar en el mercado?', style: AppTextStyles.h2),
           const SizedBox(height: 6),
           Text(
             'Elige la categoría del producto. Si vendes ganado, vincúlalo a un animal registrado para certificarlo automáticamente.',
@@ -908,10 +1143,14 @@ class _PublishWizardScreenState extends State<PublishWizardScreen> {
                   width: MediaQuery.of(context).size.width * 0.43,
                   height: 70, // >= 56px clickable area
                   decoration: BoxDecoration(
-                    color: isSelected ? AppColors.greenSurface : AppColors.surface,
+                    color: isSelected
+                        ? AppColors.greenSurface
+                        : AppColors.surface,
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(
-                      color: isSelected ? AppColors.primaryGreen : AppColors.border,
+                      color: isSelected
+                          ? AppColors.primaryGreen
+                          : AppColors.border,
                       width: 2,
                     ),
                   ),
@@ -919,7 +1158,9 @@ class _PublishWizardScreenState extends State<PublishWizardScreen> {
                   child: Text(
                     cat,
                     style: AppTextStyles.bodyBold.copyWith(
-                      color: isSelected ? AppColors.primaryGreenDark : AppColors.textPrimary,
+                      color: isSelected
+                          ? AppColors.primaryGreenDark
+                          : AppColors.textPrimary,
                       fontSize: 16,
                     ),
                   ),
@@ -958,7 +1199,8 @@ class _PublishWizardScreenState extends State<PublishWizardScreen> {
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
                   itemCount: availableAnimals.length,
-                  separatorBuilder: (context, index) => const Divider(height: 1, color: AppColors.border),
+                  separatorBuilder: (context, index) =>
+                      const Divider(height: 1, color: AppColors.border),
                   itemBuilder: (context, index) {
                     final animal = availableAnimals[index];
                     final isSelected = _selectedAnimal?.id == animal.id;
@@ -970,8 +1212,13 @@ class _PublishWizardScreenState extends State<PublishWizardScreen> {
                         _saveCurrentDraft();
                       },
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                        color: isSelected ? AppColors.greenSurface.withOpacity(0.4) : Colors.transparent,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 14,
+                        ),
+                        color: isSelected
+                            ? AppColors.greenSurface.withOpacity(0.4)
+                            : Colors.transparent,
                         child: Row(
                           children: [
                             Container(
@@ -980,13 +1227,19 @@ class _PublishWizardScreenState extends State<PublishWizardScreen> {
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
                                 border: Border.all(
-                                  color: isSelected ? AppColors.primaryGreen : AppColors.textSecondary,
+                                  color: isSelected
+                                      ? AppColors.primaryGreen
+                                      : AppColors.textSecondary,
                                   width: 2,
                                 ),
                               ),
                               child: isSelected
                                   ? const Center(
-                                      child: Icon(Icons.circle, size: 12, color: AppColors.primaryGreen),
+                                      child: Icon(
+                                        Icons.circle,
+                                        size: 12,
+                                        color: AppColors.primaryGreen,
+                                      ),
                                     )
                                   : null,
                             ),
@@ -1007,14 +1260,21 @@ class _PublishWizardScreenState extends State<PublishWizardScreen> {
                               ),
                             ),
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
+                              ),
                               decoration: BoxDecoration(
-                                color: animal.score >= 90 ? AppColors.greenSurface : AppColors.sandBeige,
+                                color: animal.score >= 90
+                                    ? AppColors.greenSurface
+                                    : AppColors.sandBeige,
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: Text(
                                 '${animal.score}/100',
-                                style: AppTextStyles.caption.copyWith(fontWeight: FontWeight.bold),
+                                style: AppTextStyles.caption.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
                             ),
                           ],
@@ -1036,10 +1296,7 @@ class _PublishWizardScreenState extends State<PublishWizardScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Identificación del Animal',
-            style: AppTextStyles.h2,
-          ),
+          Text('Identificación del Animal', style: AppTextStyles.h2),
           const SizedBox(height: 6),
           Text(
             'Seleccione la vía oficial de registro e identificación de su animal.',
@@ -1059,10 +1316,14 @@ class _PublishWizardScreenState extends State<PublishWizardScreen> {
             child: Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: _via == 'via_a' ? AppColors.greenSurface : AppColors.surface,
+                color: _via == 'via_a'
+                    ? AppColors.greenSurface
+                    : AppColors.surface,
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
-                  color: _via == 'via_a' ? AppColors.primaryGreen : AppColors.border,
+                  color: _via == 'via_a'
+                      ? AppColors.primaryGreen
+                      : AppColors.border,
                   width: 2,
                 ),
               ),
@@ -1072,7 +1333,9 @@ class _PublishWizardScreenState extends State<PublishWizardScreen> {
                   Container(
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
-                      color: _via == 'via_a' ? AppColors.primaryGreen.withOpacity(0.2) : AppColors.border.withOpacity(0.3),
+                      color: _via == 'via_a'
+                          ? AppColors.primaryGreen.withOpacity(0.2)
+                          : AppColors.border.withOpacity(0.3),
                       shape: BoxShape.circle,
                     ),
                     child: const Icon(
@@ -1089,7 +1352,9 @@ class _PublishWizardScreenState extends State<PublishWizardScreen> {
                         Text(
                           'Vía A — Con arete oficial',
                           style: AppTextStyles.bodyBold.copyWith(
-                            color: _via == 'via_a' ? AppColors.primaryGreenDark : AppColors.textPrimary,
+                            color: _via == 'via_a'
+                                ? AppColors.primaryGreenDark
+                                : AppColors.textPrimary,
                           ),
                         ),
                         const SizedBox(height: 4),
@@ -1100,11 +1365,16 @@ class _PublishWizardScreenState extends State<PublishWizardScreen> {
                         if (_selectedAnimal != null) ...[
                           const SizedBox(height: 8),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
                             decoration: BoxDecoration(
                               color: Colors.white.withOpacity(0.8),
                               borderRadius: BorderRadius.circular(6),
-                              border: Border.all(color: AppColors.primaryGreen.withOpacity(0.3)),
+                              border: Border.all(
+                                color: AppColors.primaryGreen.withOpacity(0.3),
+                              ),
                             ),
                             child: Text(
                               'Arete actual: ${_selectedAnimal!.tag}',
@@ -1137,10 +1407,14 @@ class _PublishWizardScreenState extends State<PublishWizardScreen> {
             child: Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: _via == 'via_b' ? AppColors.greenSurface : AppColors.surface,
+                color: _via == 'via_b'
+                    ? AppColors.greenSurface
+                    : AppColors.surface,
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
-                  color: _via == 'via_b' ? AppColors.primaryGreen : AppColors.border,
+                  color: _via == 'via_b'
+                      ? AppColors.primaryGreen
+                      : AppColors.border,
                   width: 2,
                 ),
               ),
@@ -1150,7 +1424,9 @@ class _PublishWizardScreenState extends State<PublishWizardScreen> {
                   Container(
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
-                      color: _via == 'via_b' ? AppColors.primaryGreen.withOpacity(0.2) : AppColors.border.withOpacity(0.3),
+                      color: _via == 'via_b'
+                          ? AppColors.primaryGreen.withOpacity(0.2)
+                          : AppColors.border.withOpacity(0.3),
                       shape: BoxShape.circle,
                     ),
                     child: const Icon(
@@ -1167,7 +1443,9 @@ class _PublishWizardScreenState extends State<PublishWizardScreen> {
                         Text(
                           'Vía B — Sin arete oficial',
                           style: AppTextStyles.bodyBold.copyWith(
-                            color: _via == 'via_b' ? AppColors.primaryGreenDark : AppColors.textPrimary,
+                            color: _via == 'via_b'
+                                ? AppColors.primaryGreenDark
+                                : AppColors.textPrimary,
                           ),
                         ),
                         const SizedBox(height: 4),
@@ -1187,7 +1465,10 @@ class _PublishWizardScreenState extends State<PublishWizardScreen> {
 
           // Condicional para Vía B
           if (_via == 'via_b') ...[
-            Text('Detalles de Identificación Alternativa', style: AppTextStyles.h3),
+            Text(
+              'Detalles de Identificación Alternativa',
+              style: AppTextStyles.h3,
+            ),
             const SizedBox(height: 10),
 
             // Campo de texto de Señas Particulares
@@ -1197,9 +1478,14 @@ class _PublishWizardScreenState extends State<PublishWizardScreen> {
               style: AppTextStyles.body,
               decoration: InputDecoration(
                 labelText: 'Señas particulares (Obligatorio)',
-                labelStyle: AppTextStyles.caption.copyWith(fontWeight: FontWeight.bold),
-                hintText: 'Describa marcas, manchas, color de cuernos, etc. que distingan al animal.',
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+                labelStyle: AppTextStyles.caption.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+                hintText:
+                    'Describa marcas, manchas, color de cuernos, etc. que distingan al animal.',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
                 alignLabelWithHint: true,
               ),
               onChanged: (val) {
@@ -1330,8 +1616,16 @@ class _PublishWizardScreenState extends State<PublishWizardScreen> {
                           child: ClipRRect(
                             borderRadius: BorderRadius.circular(14),
                             child: path.startsWith('http')
-                                ? Image.network(path, fit: BoxFit.cover)
-                                : Image.file(File(path), fit: BoxFit.cover),
+                                ? Image.network(
+                                    path,
+                                    fit: BoxFit.contain,
+                                    alignment: Alignment.center,
+                                  )
+                                : Image.file(
+                                    File(path),
+                                    fit: BoxFit.contain,
+                                    alignment: Alignment.center,
+                                  ),
                           ),
                         ),
                         // Delete button
@@ -1346,7 +1640,11 @@ class _PublishWizardScreenState extends State<PublishWizardScreen> {
                                 color: AppColors.alertRed,
                                 shape: BoxShape.circle,
                               ),
-                              child: const Icon(LucideIcons.x, size: 14, color: Colors.white),
+                              child: const Icon(
+                                LucideIcons.x,
+                                size: 14,
+                                color: Colors.white,
+                              ),
                             ),
                           ),
                         ),
@@ -1361,9 +1659,18 @@ class _PublishWizardScreenState extends State<PublishWizardScreen> {
                               decoration: const BoxDecoration(
                                 color: Colors.white,
                                 shape: BoxShape.circle,
-                                boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 4)],
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black12,
+                                    blurRadius: 4,
+                                  ),
+                                ],
                               ),
-                              child: const Icon(LucideIcons.pencil, size: 14, color: AppColors.primaryGreenDark),
+                              child: const Icon(
+                                LucideIcons.pencil,
+                                size: 14,
+                                color: AppColors.primaryGreenDark,
+                              ),
                             ),
                           ),
                         ),
@@ -1380,7 +1687,9 @@ class _PublishWizardScreenState extends State<PublishWizardScreen> {
                         color: AppColors.surface,
                         borderRadius: BorderRadius.circular(16),
                         border: Border.all(
-                          color: slot.isRequired ? AppColors.alertOrange : AppColors.primaryGreen.withOpacity(0.4),
+                          color: slot.isRequired
+                              ? AppColors.alertOrange
+                              : AppColors.primaryGreen.withOpacity(0.4),
                           width: 2,
                         ),
                       ),
@@ -1391,7 +1700,9 @@ class _PublishWizardScreenState extends State<PublishWizardScreen> {
                           Icon(
                             LucideIcons.camera,
                             size: 32,
-                            color: slot.isRequired ? AppColors.alertOrange : AppColors.primaryGreen,
+                            color: slot.isRequired
+                                ? AppColors.alertOrange
+                                : AppColors.primaryGreen,
                           ),
                           const SizedBox(height: 6),
                           Text(
@@ -1400,14 +1711,18 @@ class _PublishWizardScreenState extends State<PublishWizardScreen> {
                             style: AppTextStyles.caption.copyWith(
                               fontWeight: FontWeight.bold,
                               fontSize: 10,
-                              color: slot.isRequired ? AppColors.alertOrange : AppColors.textPrimary,
+                              color: slot.isRequired
+                                  ? AppColors.alertOrange
+                                  : AppColors.textPrimary,
                             ),
                           ),
                           const SizedBox(height: 2),
                           Text(
                             slot.sublabel,
                             style: AppTextStyles.caption.copyWith(
-                              color: slot.isRequired ? AppColors.alertRed : AppColors.textSecondary,
+                              color: slot.isRequired
+                                  ? AppColors.alertRed
+                                  : AppColors.textSecondary,
                               fontSize: 8,
                             ),
                           ),
@@ -1432,8 +1747,16 @@ class _PublishWizardScreenState extends State<PublishWizardScreen> {
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(14),
                           child: path.startsWith('http')
-                              ? Image.network(path, fit: BoxFit.cover)
-                              : Image.file(File(path), fit: BoxFit.cover),
+                              ? Image.network(
+                                  path,
+                                  fit: BoxFit.contain,
+                                  alignment: Alignment.center,
+                                )
+                              : Image.file(
+                                  File(path),
+                                  fit: BoxFit.contain,
+                                  alignment: Alignment.center,
+                                ),
                         ),
                       ),
                       // Delete button
@@ -1448,7 +1771,11 @@ class _PublishWizardScreenState extends State<PublishWizardScreen> {
                               color: AppColors.alertRed,
                               shape: BoxShape.circle,
                             ),
-                            child: const Icon(LucideIcons.x, size: 14, color: Colors.white),
+                            child: const Icon(
+                              LucideIcons.x,
+                              size: 14,
+                              color: Colors.white,
+                            ),
                           ),
                         ),
                       ),
@@ -1463,9 +1790,15 @@ class _PublishWizardScreenState extends State<PublishWizardScreen> {
                             decoration: const BoxDecoration(
                               color: Colors.white,
                               shape: BoxShape.circle,
-                              boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 4)],
+                              boxShadow: [
+                                BoxShadow(color: Colors.black12, blurRadius: 4),
+                              ],
                             ),
-                            child: const Icon(LucideIcons.pencil, size: 14, color: AppColors.primaryGreenDark),
+                            child: const Icon(
+                              LucideIcons.pencil,
+                              size: 14,
+                              color: AppColors.primaryGreenDark,
+                            ),
                           ),
                         ),
                       ),
@@ -1517,7 +1850,9 @@ class _PublishWizardScreenState extends State<PublishWizardScreen> {
           const SizedBox(height: 20),
 
           // Helper tooltip below slot if Vía B has sena slot empty
-          if (_category == 'Ganado' && _via == 'via_b' && _slotImages['sena'] == null)
+          if (_category == 'Ganado' &&
+              _via == 'via_b' &&
+              _slotImages['sena'] == null)
             Padding(
               padding: const EdgeInsets.only(bottom: 14),
               child: Container(
@@ -1525,16 +1860,25 @@ class _PublishWizardScreenState extends State<PublishWizardScreen> {
                 decoration: BoxDecoration(
                   color: AppColors.greenSurface.withOpacity(0.5),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppColors.primaryGreen.withOpacity(0.2)),
+                  border: Border.all(
+                    color: AppColors.primaryGreen.withOpacity(0.2),
+                  ),
                 ),
                 child: Row(
                   children: [
-                    const Icon(LucideIcons.info, color: AppColors.primaryGreenDark, size: 20),
+                    const Icon(
+                      LucideIcons.info,
+                      color: AppColors.primaryGreenDark,
+                      size: 20,
+                    ),
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(
                         'Foto de Seña Particular: Foto de la mancha, marca o seña que describiste — ayuda a identificar al animal con confianza.',
-                        style: AppTextStyles.caption.copyWith(color: AppColors.primaryGreenDark, fontWeight: FontWeight.w500),
+                        style: AppTextStyles.caption.copyWith(
+                          color: AppColors.primaryGreenDark,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
                     ),
                   ],
@@ -1546,8 +1890,12 @@ class _PublishWizardScreenState extends State<PublishWizardScreen> {
           Row(
             children: [
               Icon(
-                _imagePaths.isNotEmpty ? LucideIcons.checkCircle : LucideIcons.alertTriangle,
-                color: _imagePaths.isNotEmpty ? AppColors.primaryGreen : AppColors.alertOrange,
+                _imagePaths.isNotEmpty
+                    ? LucideIcons.checkCircle
+                    : LucideIcons.alertTriangle,
+                color: _imagePaths.isNotEmpty
+                    ? AppColors.primaryGreen
+                    : AppColors.alertOrange,
                 size: 18,
               ),
               const SizedBox(width: 6),
@@ -1555,7 +1903,9 @@ class _PublishWizardScreenState extends State<PublishWizardScreen> {
                 '${_imagePaths.length} de 3 fotos sugeridas · ${_extraImagePaths.length} fotos extra agregadas',
                 style: AppTextStyles.caption.copyWith(
                   fontWeight: FontWeight.bold,
-                  color: _imagePaths.isNotEmpty ? AppColors.primaryGreenDark : AppColors.alertOrange,
+                  color: _imagePaths.isNotEmpty
+                      ? AppColors.primaryGreenDark
+                      : AppColors.alertOrange,
                 ),
               ),
             ],
@@ -1576,14 +1926,21 @@ class _PublishWizardScreenState extends State<PublishWizardScreen> {
                   const SizedBox(
                     width: 24,
                     height: 24,
-                    child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primaryGreen),
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: AppColors.primaryGreen,
+                    ),
                   ),
                   const SizedBox(width: 14),
-                  Text('La IA está analizando tu foto principal...', style: AppTextStyles.bodyBold),
+                  Text(
+                    'La IA está analizando tu foto principal...',
+                    style: AppTextStyles.bodyBold,
+                  ),
                 ],
               ),
             )
-          else if (_slotImages['principal'] != null) // Only show if principal photo exists
+          else if (_slotImages['principal'] !=
+              null) // Only show if principal photo exists
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -1596,18 +1953,26 @@ class _PublishWizardScreenState extends State<PublishWizardScreen> {
                 children: [
                   Row(
                     children: [
-                      const Icon(LucideIcons.bot, color: Color(0xFF0F5BCC), size: 22),
+                      const Icon(
+                        LucideIcons.bot,
+                        color: Color(0xFF0F5BCC),
+                        size: 22,
+                      ),
                       const SizedBox(width: 8),
                       Text(
                         'La IA analizó tu foto',
-                        style: AppTextStyles.bodyBold.copyWith(color: const Color(0xFF0F5BCC)),
+                        style: AppTextStyles.bodyBold.copyWith(
+                          color: const Color(0xFF0F5BCC),
+                        ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 8),
                   Text(
                     _getIaMessage(),
-                    style: AppTextStyles.body.copyWith(color: const Color(0xFF1E4680)),
+                    style: AppTextStyles.body.copyWith(
+                      color: const Color(0xFF1E4680),
+                    ),
                   ),
                 ],
               ),
@@ -1624,18 +1989,21 @@ class _PublishWizardScreenState extends State<PublishWizardScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(
-              LucideIcons.cpu,
-              size: 56,
-              color: AppColors.primaryGreen,
-            ).animate(onPlay: (controller) => controller.repeat())
-             .scale(duration: 800.ms, curve: Curves.easeInOut)
-             .then()
-             .scale(duration: 800.ms, curve: Curves.easeInOut),
+            const Icon(LucideIcons.cpu, size: 56, color: AppColors.primaryGreen)
+                .animate(onPlay: (controller) => controller.repeat())
+                .scale(duration: 800.ms, curve: Curves.easeInOut)
+                .then()
+                .scale(duration: 800.ms, curve: Curves.easeInOut),
             const SizedBox(height: 20),
-            Text('Revisando los requisitos oficiales...', style: AppTextStyles.h2),
+            Text(
+              'Revisando los requisitos oficiales...',
+              style: AppTextStyles.h2,
+            ),
             const SizedBox(height: 8),
-            Text('Consultando bases de datos de AGROCALIDAD y registros locales...', style: AppTextStyles.body),
+            Text(
+              'Consultando bases de datos de AGROCALIDAD y registros locales...',
+              style: AppTextStyles.body,
+            ),
           ],
         ),
       );
@@ -1645,10 +2013,7 @@ class _PublishWizardScreenState extends State<PublishWizardScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Verificando tu Publicación',
-            style: AppTextStyles.h2,
-          ),
+          Text('Verificando tu Publicación', style: AppTextStyles.h2),
           const SizedBox(height: 6),
           Text(
             'Para vender ganado en Ecuador, es ideal contar con la verificación de vacunación y aretes SISA.',
@@ -1674,7 +2039,9 @@ class _PublishWizardScreenState extends State<PublishWizardScreen> {
           // Aftosa
           _buildRequirementCheck(
             label: 'Vacuna Fiebre Aftosa',
-            value: _vacunasAlDia ? 'Aplicada hace 38 días' : 'Vencida o no registrada',
+            value: _vacunasAlDia
+                ? 'Aplicada hace 38 días'
+                : 'Vencida o no registrada',
             isOk: _vacunasAlDia,
           ),
           // Brucelosis
@@ -1686,7 +2053,9 @@ class _PublishWizardScreenState extends State<PublishWizardScreen> {
           // Historial clínico
           _buildRequirementCheck(
             label: 'Historial clínico',
-            value: _historialCompleto ? '3 registros recientes ✓' : 'Faltan registros recientes',
+            value: _historialCompleto
+                ? '3 registros recientes ✓'
+                : 'Faltan registros recientes',
             isOk: _historialCompleto,
           ),
 
@@ -1699,8 +2068,12 @@ class _PublishWizardScreenState extends State<PublishWizardScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Icon(
-                _cvmState == 'verified' ? LucideIcons.checkCircle : LucideIcons.alertTriangle,
-                color: _cvmState == 'verified' ? AppColors.primaryGreen : AppColors.alertOrange,
+                _cvmState == 'verified'
+                    ? LucideIcons.checkCircle
+                    : LucideIcons.alertTriangle,
+                color: _cvmState == 'verified'
+                    ? AppColors.primaryGreen
+                    : AppColors.alertOrange,
                 size: 24,
               ),
               const SizedBox(width: 12),
@@ -1714,10 +2087,12 @@ class _PublishWizardScreenState extends State<PublishWizardScreen> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      _cvmState == 'verified' 
+                      _cvmState == 'verified'
                           ? 'CVM Verificado y registrado con éxito ✓'
                           : '🤖 "Para vender ganado en pie en Ecuador necesitas un Certificado Veterinario de Movilización (documento que certifica que el animal está sano) vigente. Puedes solicitarlo a tu veterinario o a AGROCALIDAD antes de mover al animal."',
-                      style: AppTextStyles.caption.copyWith(color: AppColors.textPrimary),
+                      style: AppTextStyles.caption.copyWith(
+                        color: AppColors.textPrimary,
+                      ),
                     ),
                   ],
                 ),
@@ -1742,12 +2117,17 @@ class _PublishWizardScreenState extends State<PublishWizardScreen> {
                       },
                       style: OutlinedButton.styleFrom(
                         side: const BorderSide(color: AppColors.border),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
                       ),
                       child: Text(
                         'Continuar sin CVM',
                         textAlign: TextAlign.center,
-                        style: AppTextStyles.bodyBold.copyWith(color: AppColors.textSecondary, fontSize: 13),
+                        style: AppTextStyles.bodyBold.copyWith(
+                          color: AppColors.textSecondary,
+                          fontSize: 13,
+                        ),
                       ),
                     ),
                   ),
@@ -1764,19 +2144,29 @@ class _PublishWizardScreenState extends State<PublishWizardScreen> {
                         _saveCurrentDraft();
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
-                            content: Text('CVM marcado como verificado.', style: AppTextStyles.bodyBold.copyWith(color: Colors.white)),
+                            content: Text(
+                              'CVM marcado como verificado.',
+                              style: AppTextStyles.bodyBold.copyWith(
+                                color: Colors.white,
+                              ),
+                            ),
                             backgroundColor: AppColors.primaryGreen,
                           ),
                         );
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primaryGreen,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
                       ),
                       child: Text(
                         'Ya tengo CVM',
                         textAlign: TextAlign.center,
-                        style: AppTextStyles.bodyBold.copyWith(color: Colors.white, fontSize: 13),
+                        style: AppTextStyles.bodyBold.copyWith(
+                          color: Colors.white,
+                          fontSize: 13,
+                        ),
                       ),
                     ),
                   ),
@@ -1823,10 +2213,7 @@ class _PublishWizardScreenState extends State<PublishWizardScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Datos de Venta y Descripción',
-            style: AppTextStyles.h2,
-          ),
+          Text('Datos de Venta y Descripción', style: AppTextStyles.h2),
           const SizedBox(height: 6),
           Text(
             'Define el precio de venta y las condiciones del trato.',
@@ -1847,7 +2234,9 @@ class _PublishWizardScreenState extends State<PublishWizardScreen> {
                     labelText: 'Precio de venta (USD)',
                     prefixText: r'$ ',
                     labelStyle: AppTextStyles.caption,
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
                   ),
                 ),
               ),
@@ -1858,7 +2247,8 @@ class _PublishWizardScreenState extends State<PublishWizardScreen> {
                   child: ElevatedButton(
                     onPressed: () {
                       setState(() {
-                        _priceController.text = _suggestedPrice!.toStringAsFixed(0);
+                        _priceController.text = _suggestedPrice!
+                            .toStringAsFixed(0);
                       });
                     },
                     style: ElevatedButton.styleFrom(
@@ -1872,7 +2262,10 @@ class _PublishWizardScreenState extends State<PublishWizardScreen> {
                     child: Text(
                       'Usar sugerido\n(\$${_suggestedPrice!.toStringAsFixed(0)})',
                       textAlign: TextAlign.center,
-                      style: AppTextStyles.caption.copyWith(color: AppColors.primaryGreenDark, fontWeight: FontWeight.bold),
+                      style: AppTextStyles.caption.copyWith(
+                        color: AppColors.primaryGreenDark,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                 ),
@@ -1909,8 +2302,13 @@ class _PublishWizardScreenState extends State<PublishWizardScreen> {
               Text('Descripción del anuncio', style: AppTextStyles.h3),
               if (_category == 'Ganado' && _selectedAnimal != null)
                 IconButton(
-                  icon: const Icon(LucideIcons.sparkles, color: AppColors.primaryGreenDark),
-                  onPressed: _isGeneratingDescription ? null : _generateDescriptionWithIa,
+                  icon: const Icon(
+                    LucideIcons.sparkles,
+                    color: AppColors.primaryGreenDark,
+                  ),
+                  onPressed: _isGeneratingDescription
+                      ? null
+                      : _generateDescriptionWithIa,
                   tooltip: 'Generar descripción con IA',
                 ),
             ],
@@ -1924,8 +2322,11 @@ class _PublishWizardScreenState extends State<PublishWizardScreen> {
                 maxLines: 5,
                 style: AppTextStyles.body,
                 decoration: InputDecoration(
-                  hintText: 'Describe tu animal o producto (ej: edad, temperamento, condiciones de salud, etc.)',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+                  hintText:
+                      'Describe tu animal o producto (ej: edad, temperamento, condiciones de salud, etc.)',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
                   contentPadding: const EdgeInsets.fromLTRB(14, 14, 48, 14),
                 ),
               ),
@@ -1937,11 +2338,17 @@ class _PublishWizardScreenState extends State<PublishWizardScreen> {
                   height: 40,
                   width: 40,
                   decoration: BoxDecoration(
-                    color: _isDictating ? AppColors.alertOrange : AppColors.primaryGreen,
+                    color: _isDictating
+                        ? AppColors.alertOrange
+                        : AppColors.primaryGreen,
                     shape: BoxShape.circle,
                   ),
                   child: IconButton(
-                    icon: Icon(_isDictating ? LucideIcons.mic : LucideIcons.mic, color: Colors.white, size: 18),
+                    icon: Icon(
+                      _isDictating ? LucideIcons.mic : LucideIcons.mic,
+                      color: Colors.white,
+                      size: 18,
+                    ),
                     onPressed: _isDictating ? null : _simulateDictation,
                   ),
                 ),
@@ -1957,10 +2364,18 @@ class _PublishWizardScreenState extends State<PublishWizardScreen> {
                   const SizedBox(
                     width: 14,
                     height: 14,
-                    child: CircularProgressIndicator(strokeWidth: 1.5, color: AppColors.primaryGreen),
+                    child: CircularProgressIndicator(
+                      strokeWidth: 1.5,
+                      color: AppColors.primaryGreen,
+                    ),
                   ),
                   const SizedBox(width: 8),
-                  Text('Escribiendo descripción con IA...', style: AppTextStyles.caption.copyWith(fontStyle: FontStyle.italic)),
+                  Text(
+                    'Escribiendo descripción con IA...',
+                    style: AppTextStyles.caption.copyWith(
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -1972,10 +2387,19 @@ class _PublishWizardScreenState extends State<PublishWizardScreen> {
                   const SizedBox(
                     width: 14,
                     height: 14,
-                    child: CircularProgressIndicator(strokeWidth: 1.5, color: AppColors.alertOrange),
+                    child: CircularProgressIndicator(
+                      strokeWidth: 1.5,
+                      color: AppColors.alertOrange,
+                    ),
                   ),
                   const SizedBox(width: 8),
-                  Text('Escuchando voz (Rosa Elvira)... Hable ahora.', style: AppTextStyles.caption.copyWith(color: AppColors.alertOrange, fontStyle: FontStyle.italic)),
+                  Text(
+                    'Escuchando voz (Rosa Elvira)... Hable ahora.',
+                    style: AppTextStyles.caption.copyWith(
+                      color: AppColors.alertOrange,
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -1991,7 +2415,12 @@ class _PublishWizardScreenState extends State<PublishWizardScreen> {
             children: _allConditions.map((cond) {
               final isSelected = _selectedConditions.contains(cond);
               return FilterChip(
-                label: Text(cond, style: AppTextStyles.caption.copyWith(fontWeight: FontWeight.bold)),
+                label: Text(
+                  cond,
+                  style: AppTextStyles.caption.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
                 selected: isSelected,
                 selectedColor: AppColors.greenSurface,
                 checkmarkColor: AppColors.primaryGreen,
@@ -2017,7 +2446,9 @@ class _PublishWizardScreenState extends State<PublishWizardScreen> {
             style: AppTextStyles.bodyBold,
             decoration: InputDecoration(
               labelText: 'Ubicación de entrega',
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
             ),
             onChanged: (val) {
               _location = val;
@@ -2032,19 +2463,25 @@ class _PublishWizardScreenState extends State<PublishWizardScreen> {
   // PASO 5: Confirmar y publicar
   Widget _buildStep5() {
     final price = double.tryParse(_priceController.text) ?? 1500.0;
-    
+
     final bool isElite = _category == 'Ganado'
-        ? (_via == 'via_a' && _fotosCalidad && _sisaVerified && _vacunasAlDia && _cvmState == 'verified')
+        ? (_via == 'via_a' &&
+              _fotosCalidad &&
+              _sisaVerified &&
+              _vacunasAlDia &&
+              _cvmState == 'verified')
         : (_fotosCalidad && _cvmState == 'verified');
     final badge = isElite ? 'Elite' : 'Verificado';
 
     final previewItem = MarketplaceItem(
-      title: _category == 'Ganado' 
+      title: _category == 'Ganado'
           ? '${_selectedAnimal?.category} ${_selectedAnimal?.breed} - ${_selectedAnimal?.name}'
           : '$_category Fresco de Finca',
       price: price,
       category: _category,
-      weight: _selectedAnimal?.weightKg != null ? '${_selectedAnimal!.weightKg.toStringAsFixed(0)} kg' : null,
+      weight: _selectedAnimal?.weightKg != null
+          ? '${_selectedAnimal!.weightKg.toStringAsFixed(0)} kg'
+          : null,
       production: _selectedAnimal?.productionLiters,
       location: _location,
       responseTime: '< 5 min',
@@ -2065,10 +2502,7 @@ class _PublishWizardScreenState extends State<PublishWizardScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Confirmar y Publicar',
-            style: AppTextStyles.h2,
-          ),
+          Text('Confirmar y Publicar', style: AppTextStyles.h2),
           const SizedBox(height: 6),
           Text(
             'Confirma cómo se verá tu publicación en el Marketplace general.',
@@ -2077,11 +2511,7 @@ class _PublishWizardScreenState extends State<PublishWizardScreen> {
           const SizedBox(height: 20),
 
           // Live visual card
-          MarketItemCard(
-            item: previewItem,
-            onTap: () {},
-            onContact: () {},
-          ),
+          MarketItemCard(item: previewItem, onTap: () {}, onContact: () {}),
 
           const SizedBox(height: 24),
 
@@ -2098,39 +2528,68 @@ class _PublishWizardScreenState extends State<PublishWizardScreen> {
               children: [
                 Row(
                   children: [
-                    const Icon(LucideIcons.shieldAlert, color: AppColors.primaryGreen, size: 24),
+                    const Icon(
+                      LucideIcons.shieldAlert,
+                      color: AppColors.primaryGreen,
+                      size: 24,
+                    ),
                     const SizedBox(width: 8),
                     Text(
                       'Nivel de Certificación: ${previewItem.badge.toUpperCase()}',
-                      style: AppTextStyles.h3.copyWith(color: AppColors.primaryGreenDark),
+                      style: AppTextStyles.h3.copyWith(
+                        color: AppColors.primaryGreenDark,
+                      ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 14),
                 if (_category == 'Ganado' && _via == 'via_b')
-                  _buildVerifyBadgeCheck('Señas particulares registradas', _senasParticularesController.text.isNotEmpty)
+                  _buildVerifyBadgeCheck(
+                    'Señas particulares registradas',
+                    _senasParticularesController.text.isNotEmpty,
+                  )
                 else
-                  _buildVerifyBadgeCheck('Arete SISA verificado', _sisaVerified),
-                _buildVerifyBadgeCheck('Vacunas al día (Aftosa, Brucelosis)', _vacunasAlDia),
-                _buildVerifyBadgeCheck('Historial clínico verificado', _historialCompleto),
-                _buildVerifyBadgeCheck('Calidad de fotos validada por IA', _fotosCalidad),
-                
+                  _buildVerifyBadgeCheck(
+                    'Arete SISA verificado',
+                    _sisaVerified,
+                  ),
+                _buildVerifyBadgeCheck(
+                  'Vacunas al día (Aftosa, Brucelosis)',
+                  _vacunasAlDia,
+                ),
+                _buildVerifyBadgeCheck(
+                  'Historial clínico verificado',
+                  _historialCompleto,
+                ),
+                _buildVerifyBadgeCheck(
+                  'Calidad de fotos validada por IA',
+                  _fotosCalidad,
+                ),
+
                 // CVM pending check
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 4),
                   child: Row(
                     children: [
                       Icon(
-                        _cvmState == 'verified' ? LucideIcons.check : LucideIcons.alertCircle,
-                        color: _cvmState == 'verified' ? AppColors.primaryGreen : AppColors.alertOrange,
+                        _cvmState == 'verified'
+                            ? LucideIcons.check
+                            : LucideIcons.alertCircle,
+                        color: _cvmState == 'verified'
+                            ? AppColors.primaryGreen
+                            : AppColors.alertOrange,
                         size: 16,
                       ),
                       const SizedBox(width: 10),
                       Text(
-                        _cvmState == 'verified' ? 'CVM Registrado' : 'CVM Pendiente (no bloquea publicación)',
+                        _cvmState == 'verified'
+                            ? 'CVM Registrado'
+                            : 'CVM Pendiente (no bloquea publicación)',
                         style: AppTextStyles.caption.copyWith(
                           fontWeight: FontWeight.bold,
-                          color: _cvmState == 'verified' ? AppColors.primaryGreenDark : AppColors.alertOrange,
+                          color: _cvmState == 'verified'
+                              ? AppColors.primaryGreenDark
+                              : AppColors.alertOrange,
                         ),
                       ),
                     ],
@@ -2161,7 +2620,10 @@ class _PublishWizardScreenState extends State<PublishWizardScreen> {
             size: 16,
           ),
           const SizedBox(width: 10),
-          Text(label, style: AppTextStyles.caption.copyWith(fontWeight: FontWeight.w600)),
+          Text(
+            label,
+            style: AppTextStyles.caption.copyWith(fontWeight: FontWeight.w600),
+          ),
         ],
       ),
     );
@@ -2186,7 +2648,10 @@ class _PublishWizardScreenState extends State<PublishWizardScreen> {
         ),
         actions: [
           IconButton(
-            icon: const Icon(LucideIcons.helpCircle, color: AppColors.primaryGreen),
+            icon: const Icon(
+              LucideIcons.helpCircle,
+              color: AppColors.primaryGreen,
+            ),
             onPressed: _showHelpTooltip,
           ),
         ],
@@ -2226,7 +2691,10 @@ class _PublishWizardScreenState extends State<PublishWizardScreen> {
                         onPressed: _prevStep,
                         child: Text(
                           'Atrás',
-                          style: AppTextStyles.bodyBold.copyWith(color: AppColors.textSecondary, fontSize: 16),
+                          style: AppTextStyles.bodyBold.copyWith(
+                            color: AppColors.textSecondary,
+                            fontSize: 16,
+                          ),
                         ),
                       ),
                     ),
@@ -2237,14 +2705,23 @@ class _PublishWizardScreenState extends State<PublishWizardScreen> {
                     child: SizedBox(
                       height: 56, // Accesibilidad: Mínimo 56px de altura
                       child: ElevatedButton(
-                        onPressed: _currentStep == _activeSteps.length - 1 ? _finishAndPublish : _nextStep,
+                        onPressed: _currentStep == _activeSteps.length - 1
+                            ? _finishAndPublish
+                            : _nextStep,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.primaryGreen,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
                         ),
                         child: Text(
-                          _currentStep == _activeSteps.length - 1 ? 'Publicar ahora' : 'Siguiente',
-                          style: AppTextStyles.bodyBold.copyWith(color: Colors.white, fontSize: 16),
+                          _currentStep == _activeSteps.length - 1
+                              ? 'Publicar ahora'
+                              : 'Siguiente',
+                          style: AppTextStyles.bodyBold.copyWith(
+                            color: Colors.white,
+                            fontSize: 16,
+                          ),
                         ),
                       ),
                     ),

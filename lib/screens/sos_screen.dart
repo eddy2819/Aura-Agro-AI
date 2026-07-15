@@ -8,6 +8,7 @@ import '../services/emergency_ai_service.dart';
 import '../services/speech_service.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_text_styles.dart';
+import 'chat/clinical_case_chat_screen.dart';
 
 class SosScreen extends StatefulWidget {
   const SosScreen({super.key});
@@ -64,7 +65,11 @@ class _SosScreenState extends State<SosScreen> {
     if (!success) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(speech.errorMsg.isNotEmpty ? speech.errorMsg : "Error al iniciar el dictado por voz."),
+          content: Text(
+            speech.errorMsg.isNotEmpty
+                ? speech.errorMsg
+                : "Error al iniciar el dictado por voz.",
+          ),
           backgroundColor: AppColors.alertOrange,
         ),
       );
@@ -112,9 +117,9 @@ class _SosScreenState extends State<SosScreen> {
         _result = res;
       });
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error durante el análisis: $e")),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Error durante el análisis: $e")));
     } finally {
       setState(() {
         _isAnalyzing = false;
@@ -151,7 +156,18 @@ class _SosScreenState extends State<SosScreen> {
       ),
     );
 
-    Navigator.of(context).pop();
+    final chats = provider.clinicalCaseChats.where(
+      (chat) => chat['case_id'] == caseId,
+    );
+    if (chats.isNotEmpty && mounted) {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (_) => ClinicalCaseChatScreen(chat: chats.first),
+        ),
+      );
+    } else if (mounted) {
+      Navigator.of(context).pop();
+    }
   }
 
   Color _getRiskColor(String level) {
@@ -170,13 +186,24 @@ class _SosScreenState extends State<SosScreen> {
   @override
   Widget build(BuildContext context) {
     final provider = Provider.of<DataProvider>(context);
-    final activeAnimals = provider.animals.where((a) => a.status.toLowerCase() == 'activo').toList();
+    final activeAnimals = provider.animals
+        .where((a) => a.status.toLowerCase() == 'activo')
+        .toList();
     final speech = SpeechService.instance;
+    final inventorySuggestions = _result == null
+        ? <Map<String, dynamic>>[]
+        : provider.getMedicinesForVetReviewBySymptoms([
+            ..._selectedSymptoms,
+            _symptomsController.text,
+          ]);
 
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('AURA SOS Ganadero', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        title: const Text(
+          'AURA SOS Ganadero',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
         backgroundColor: AppColors.primaryGreenDark,
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.white),
@@ -192,16 +219,25 @@ class _SosScreenState extends State<SosScreen> {
               decoration: BoxDecoration(
                 color: AppColors.alertOrange.withOpacity(0.08),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AppColors.alertOrange.withOpacity(0.3)),
+                border: Border.all(
+                  color: AppColors.alertOrange.withOpacity(0.3),
+                ),
               ),
               child: Row(
                 children: [
-                  const Icon(LucideIcons.shieldAlert, color: AppColors.alertOrange, size: 24),
+                  const Icon(
+                    LucideIcons.shieldAlert,
+                    color: AppColors.alertOrange,
+                    size: 24,
+                  ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
                       'AURA SOS no reemplaza al veterinario. Su función es orientar y acelerar la atención de emergencias.',
-                      style: AppTextStyles.caption.copyWith(color: AppColors.alertOrange, fontWeight: FontWeight.bold),
+                      style: AppTextStyles.caption.copyWith(
+                        color: AppColors.alertOrange,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                 ],
@@ -210,7 +246,10 @@ class _SosScreenState extends State<SosScreen> {
             const SizedBox(height: 20),
 
             // Animal Selection
-            Text('1. Selecciona el Animal Afectado', style: AppTextStyles.bodyBold),
+            Text(
+              '1. Selecciona el Animal Afectado',
+              style: AppTextStyles.bodyBold,
+            ),
             const SizedBox(height: 8),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -227,7 +266,9 @@ class _SosScreenState extends State<SosScreen> {
                   items: activeAnimals.map((animal) {
                     return DropdownMenuItem<String>(
                       value: animal.id,
-                      child: Text('${animal.name} (${animal.tag}) - ${animal.category}'),
+                      child: Text(
+                        '${animal.name} (${animal.tag}) - ${animal.category}',
+                      ),
                     );
                   }).toList(),
                   onChanged: (val) {
@@ -254,12 +295,20 @@ class _SosScreenState extends State<SosScreen> {
                   selectedColor: AppColors.greenSurface,
                   checkmarkColor: AppColors.primaryGreen,
                   labelStyle: AppTextStyles.caption.copyWith(
-                    color: isSelected ? AppColors.primaryGreenDark : AppColors.textPrimary,
-                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                    color: isSelected
+                        ? AppColors.primaryGreenDark
+                        : AppColors.textPrimary,
+                    fontWeight: isSelected
+                        ? FontWeight.bold
+                        : FontWeight.normal,
                   ),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(20),
-                    side: BorderSide(color: isSelected ? AppColors.primaryGreen : AppColors.border),
+                    side: BorderSide(
+                      color: isSelected
+                          ? AppColors.primaryGreen
+                          : AppColors.border,
+                    ),
                   ),
                   onSelected: (_) => _toggleSymptom(symptom),
                 );
@@ -277,27 +326,42 @@ class _SosScreenState extends State<SosScreen> {
                   builder: (context, child) {
                     final listening = speech.isListening;
                     return InkWell(
-                      onTap: listening ? _stopVoiceDictation : _startVoiceDictation,
+                      onTap: listening
+                          ? _stopVoiceDictation
+                          : _startVoiceDictation,
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 6,
+                        ),
                         decoration: BoxDecoration(
-                          color: listening ? Colors.red.withOpacity(0.1) : AppColors.greenSurface,
+                          color: listening
+                              ? Colors.red.withOpacity(0.1)
+                              : AppColors.greenSurface,
                           borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: listening ? Colors.red : AppColors.primaryGreen),
+                          border: Border.all(
+                            color: listening
+                                ? Colors.red
+                                : AppColors.primaryGreen,
+                          ),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Icon(
                               listening ? LucideIcons.micOff : LucideIcons.mic,
-                              color: listening ? Colors.red : AppColors.primaryGreen,
+                              color: listening
+                                  ? Colors.red
+                                  : AppColors.primaryGreen,
                               size: 16,
                             ),
                             const SizedBox(width: 6),
                             Text(
                               listening ? 'Escuchando...' : 'Dictar por voz',
                               style: AppTextStyles.caption.copyWith(
-                                color: listening ? Colors.red : AppColors.primaryGreenDark,
+                                color: listening
+                                    ? Colors.red
+                                    : AppColors.primaryGreenDark,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
@@ -314,7 +378,8 @@ class _SosScreenState extends State<SosScreen> {
               controller: _symptomsController,
               maxLines: 4,
               decoration: InputDecoration(
-                hintText: 'Describe el estado general del animal o detalla otros síntomas observados...',
+                hintText:
+                    'Describe el estado general del animal o detalla otros síntomas observados...',
                 hintStyle: AppTextStyles.caption,
                 filled: true,
                 fillColor: AppColors.surface,
@@ -324,7 +389,10 @@ class _SosScreenState extends State<SosScreen> {
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: AppColors.primaryGreen, width: 1.5),
+                  borderSide: const BorderSide(
+                    color: AppColors.primaryGreen,
+                    width: 1.5,
+                  ),
                 ),
               ),
             ),
@@ -337,13 +405,25 @@ class _SosScreenState extends State<SosScreen> {
               child: ElevatedButton.icon(
                 onPressed: _isAnalyzing ? null : _analyzeEmergency,
                 icon: _isAnalyzing
-                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2,
+                        ),
+                      )
                     : const Icon(LucideIcons.activity),
-                label: const Text('ANALIZAR EMERGENCIA CON IA', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                label: const Text(
+                  'ANALIZAR EMERGENCIA CON IA',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                ),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primaryGreen,
                   foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
               ),
             ),
@@ -356,9 +436,16 @@ class _SosScreenState extends State<SosScreen> {
                 decoration: BoxDecoration(
                   color: AppColors.surface,
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: _getRiskColor(_result!.riskLevel), width: 1.5),
+                  border: Border.all(
+                    color: _getRiskColor(_result!.riskLevel),
+                    width: 1.5,
+                  ),
                   boxShadow: [
-                    BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 4)),
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.04),
+                      blurRadius: 8,
+                      offset: const Offset(0, 4),
+                    ),
                   ],
                 ),
                 child: Column(
@@ -388,19 +475,30 @@ class _SosScreenState extends State<SosScreen> {
                     const SizedBox(height: 12),
                     Text(_result!.explanation, style: AppTextStyles.body),
                     const Divider(height: 24),
-                    Text('Acciones seguras recomendadas en campo:', style: AppTextStyles.bodyBold),
+                    Text(
+                      'Acciones seguras recomendadas en campo:',
+                      style: AppTextStyles.bodyBold,
+                    ),
                     const SizedBox(height: 8),
-                    ..._result!.safeActions.map((action) => Padding(
-                          padding: const EdgeInsets.only(bottom: 6),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Icon(LucideIcons.checkCircle2, color: AppColors.primaryGreen, size: 16),
-                              const SizedBox(width: 8),
-                              Expanded(child: Text(action, style: AppTextStyles.caption)),
-                            ],
-                          ),
-                        )),
+                    ..._result!.safeActions.map(
+                      (action) => Padding(
+                        padding: const EdgeInsets.only(bottom: 6),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Icon(
+                              LucideIcons.checkCircle2,
+                              color: AppColors.primaryGreen,
+                              size: 16,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(action, style: AppTextStyles.caption),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
                     if (_result!.notifyVet) ...[
                       const SizedBox(height: 12),
                       Container(
@@ -411,18 +509,63 @@ class _SosScreenState extends State<SosScreen> {
                         ),
                         child: Row(
                           children: [
-                            const Icon(LucideIcons.bellRing, color: AppColors.alertOrange, size: 18),
+                            const Icon(
+                              LucideIcons.bellRing,
+                              color: AppColors.alertOrange,
+                              size: 18,
+                            ),
                             const SizedBox(width: 8),
                             Expanded(
                               child: Text(
-                                'Caso Crítico: Se ha enviado una notificación automática a tus veterinarios autorizados.',
-                                style: AppTextStyles.caption.copyWith(color: AppColors.alertOrange, fontWeight: FontWeight.bold),
+                                'Contacta al veterinario de inmediato. Informa qué productos tienes disponibles, pero no automediques al animal.',
+                                style: AppTextStyles.caption.copyWith(
+                                  color: AppColors.alertOrange,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
                             ),
                           ],
                         ),
                       ),
                     ],
+                    const SizedBox(height: 16),
+                    Text(
+                      'Medicamentos disponibles para revisar con el veterinario',
+                      style: AppTextStyles.bodyBold,
+                    ),
+                    const SizedBox(height: 8),
+                    if (inventorySuggestions.isEmpty)
+                      Text(
+                        'No hay productos relacionados disponibles en el inventario.',
+                        style: AppTextStyles.caption,
+                      )
+                    else
+                      ...inventorySuggestions
+                          .take(5)
+                          .map(
+                            (medicine) => ListTile(
+                              contentPadding: EdgeInsets.zero,
+                              leading: const Icon(
+                                LucideIcons.packageCheck,
+                                color: AppColors.primaryGreen,
+                              ),
+                              title: Text(
+                                '${medicine['name'] ?? 'Producto'}',
+                                style: AppTextStyles.bodyBold,
+                              ),
+                              subtitle: Text(
+                                '${medicine['type'] ?? 'Otro'} · Stock: ${medicine['quantity'] ?? 0} ${medicine['unit'] ?? ''}',
+                              ),
+                            ),
+                          ),
+                    const SizedBox(height: 8),
+                    Text(
+                      '⚠ AURA SOS no receta medicamentos. Esta lista solo sirve para informar al veterinario. No automediques al animal.',
+                      style: AppTextStyles.caption.copyWith(
+                        color: AppColors.alertOrange,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -433,11 +576,16 @@ class _SosScreenState extends State<SosScreen> {
                 child: ElevatedButton.icon(
                   onPressed: _saveCaseAndExit,
                   icon: const Icon(LucideIcons.save),
-                  label: const Text('GUARDAR EN HISTORIAL CLÍNICO', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                  label: const Text(
+                    'GUARDAR EN HISTORIAL CLÍNICO',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                  ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primaryGreenDark,
                     foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                 ),
               ),

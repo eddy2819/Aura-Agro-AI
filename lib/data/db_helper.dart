@@ -37,7 +37,8 @@ class DBHelper {
 
   Future<Database> _initDB(String filePath) async {
     // Inicializar FFI si se ejecuta en escritorio (Windows, Mac, Linux)
-    if (!kIsWeb && (Platform.isWindows || Platform.isLinux || Platform.isMacOS)) {
+    if (!kIsWeb &&
+        (Platform.isWindows || Platform.isLinux || Platform.isMacOS)) {
       sqfliteFfiInit();
       databaseFactory = databaseFactoryFfi;
     }
@@ -52,7 +53,7 @@ class DBHelper {
 
     return await openDatabase(
       path,
-      version: 11,
+      version: 15,
       onConfigure: (db) async {
         await db.execute('PRAGMA foreign_keys = ON');
       },
@@ -188,6 +189,7 @@ class DBHelper {
 
     // Tablas MVP y de alertas (versión 11)
     await _createMvpTables(db);
+    await _createClinicalCollaborationTables(db);
 
     await _createNutritionTables(db);
     await _createMarketplaceTable(db);
@@ -219,7 +221,8 @@ class DBHelper {
         'production_liters': '12.5 L/dia',
         'vaccine_status': '28 May',
         'has_alert': 0,
-        'image_path': 'https://images.unsplash.com/photo-1570042225831-d98fa7577f1e?w=150&q=80',
+        'image_path':
+            'https://images.unsplash.com/photo-1570042225831-d98fa7577f1e?w=150&q=80',
         'breed': 'Jersey',
         'sex': 'Hembra',
         'birth_date': '2023-04-12',
@@ -245,12 +248,14 @@ class DBHelper {
         'tag': '#0089',
         'category': 'Toro Reproductor',
         'score': 78,
-        'description': 'Vacuna vencida afecta el puntaje. Programa vacunacion urgente.',
+        'description':
+            'Vacuna vencida afecta el puntaje. Programa vacunacion urgente.',
         'weight_kg': 720.0,
         'production_liters': null,
         'vaccine_status': 'Vencida',
         'has_alert': 1,
-        'image_path': 'https://images.unsplash.com/photo-1596733430284-f7437764b1a9?w=150&q=80',
+        'image_path':
+            'https://images.unsplash.com/photo-1596733430284-f7437764b1a9?w=150&q=80',
         'breed': 'Brahman',
         'sex': 'Macho',
         'birth_date': '2021-08-20',
@@ -276,12 +281,14 @@ class DBHelper {
         'tag': '#0456',
         'category': 'Ternero',
         'score': 82,
-        'description': 'Peso ligeramente bajo para su edad. Ajusta la alimentacion.',
+        'description':
+            'Peso ligeramente bajo para su edad. Ajusta la alimentacion.',
         'weight_kg': 95.0,
         'production_liters': null,
         'vaccine_status': '28 May',
         'has_alert': 1,
-        'image_path': 'https://images.unsplash.com/photo-1527153857715-3908f2bac5e8?w=150&q=80',
+        'image_path':
+            'https://images.unsplash.com/photo-1527153857715-3908f2bac5e8?w=150&q=80',
         'breed': 'Holstein',
         'sex': 'Hembra',
         'birth_date': '2025-11-05',
@@ -312,7 +319,8 @@ class DBHelper {
         'production_liters': '10.8 L/dia',
         'vaccine_status': '14 Abr',
         'has_alert': 0,
-        'image_path': 'https://images.unsplash.com/photo-1500595046783-ed211a547579?w=150&q=80',
+        'image_path':
+            'https://images.unsplash.com/photo-1500595046783-ed211a547579?w=150&q=80',
         'breed': 'Holstein',
         'sex': 'Hembra',
         'birth_date': '2022-02-14',
@@ -343,7 +351,8 @@ class DBHelper {
         'production_liters': null,
         'vaccine_status': '10 Jun',
         'has_alert': 0,
-        'image_path': 'https://images.unsplash.com/photo-1532467414612-557d38befbcd?w=150&q=80',
+        'image_path':
+            'https://images.unsplash.com/photo-1532467414612-557d38befbcd?w=150&q=80',
         'breed': 'Angus',
         'sex': 'Macho',
         'birth_date': '2024-05-10',
@@ -413,9 +422,12 @@ class DBHelper {
         'type': 'health',
         'risk_level': 'rojo',
         'title': 'Riesgo de Mastitis',
-        'description': 'Leche con grumos,Ubre inflamada,Fiebre leve : Tratamiento antibiotico recomendado. Separar del hato.',
+        'description':
+            'Leche con grumos,Ubre inflamada,Fiebre leve : Tratamiento antibiotico recomendado. Separar del hato.',
         'source': 'Finca El Paraiso',
-        'created_at': DateTime.now().subtract(const Duration(hours: 2)).toIso8601String(),
+        'created_at': DateTime.now()
+            .subtract(const Duration(hours: 2))
+            .toIso8601String(),
         'is_read': 0,
         'synced': 0,
       },
@@ -425,9 +437,12 @@ class DBHelper {
         'type': 'health',
         'risk_level': 'rojo',
         'title': 'Vacuna Vencida - Fiebre Aftosa',
-        'description': 'Esquema de vacunacion incompleto : Programar vacunacion inmediata.',
+        'description':
+            'Esquema de vacunacion incompleto : Programar vacunacion inmediata.',
         'source': 'Finca El Paraiso',
-        'created_at': DateTime.now().subtract(const Duration(days: 1)).toIso8601String(),
+        'created_at': DateTime.now()
+            .subtract(const Duration(days: 1))
+            .toIso8601String(),
         'is_read': 0,
         'synced': 0,
       },
@@ -437,9 +452,12 @@ class DBHelper {
         'type': 'nutrition',
         'risk_level': 'amarillo',
         'title': 'Bajo peso para edad',
-        'description': 'Peso 15% bajo promedio,Apetito reducido : Revisar dieta y desparasitar.',
+        'description':
+            'Peso 15% bajo promedio,Apetito reducido : Revisar dieta y desparasitar.',
         'source': 'Finca La Esperanza',
-        'created_at': DateTime.now().subtract(const Duration(days: 3)).toIso8601String(),
+        'created_at': DateTime.now()
+            .subtract(const Duration(days: 3))
+            .toIso8601String(),
         'is_read': 0,
         'synced': 0,
       },
@@ -521,7 +539,8 @@ class DBHelper {
         balancedFeed: (json['balanced_feed'] as int?) == 1,
         supplements: (json['supplements'] as int?) == 1,
         dailyConsumption: (json['daily_consumption'] as num?)?.toDouble(),
-        productionObjective: (json['production_objective'] as String?) ?? 'Producción láctea',
+        productionObjective:
+            (json['production_objective'] as String?) ?? 'Producción láctea',
         finca: (json['finca'] as String?) ?? 'Finca Principal',
         lote: (json['lote'] as String?) ?? 'Lote A',
         potrero: (json['potrero'] as String?) ?? 'Potrero 1',
@@ -600,7 +619,11 @@ class DBHelper {
     return count;
   }
 
-  Future<int> updateAnimalVaccineStatus(String animalId, String? vaccineStatus, bool hasAlert) async {
+  Future<int> updateAnimalVaccineStatus(
+    String animalId,
+    String? vaccineStatus,
+    bool hasAlert,
+  ) async {
     final db = await instance.database;
     final map = {
       'vaccine_status': vaccineStatus,
@@ -618,9 +641,7 @@ class DBHelper {
 
   Future<int> updateAnimalWeight(String animalId, double weightKg) async {
     final db = await instance.database;
-    final map = {
-      'weight_kg': weightKg,
-    };
+    final map = {'weight_kg': weightKg};
     final count = await db.update(
       'animals',
       map,
@@ -631,11 +652,12 @@ class DBHelper {
     return count;
   }
 
-  Future<int> updateAnimalProduction(String animalId, String? productionLiters) async {
+  Future<int> updateAnimalProduction(
+    String animalId,
+    String? productionLiters,
+  ) async {
     final db = await instance.database;
-    final map = {
-      'production_liters': productionLiters,
-    };
+    final map = {'production_liters': productionLiters};
     final count = await db.update(
       'animals',
       map,
@@ -647,7 +669,9 @@ class DBHelper {
   }
 
   // Métodos CRUD para Vacunas
-  Future<List<Map<String, dynamic>>> getVaccinesForAnimal(String animalId) async {
+  Future<List<Map<String, dynamic>>> getVaccinesForAnimal(
+    String animalId,
+  ) async {
     final db = await instance.database;
     return await db.query(
       'vaccines',
@@ -670,7 +694,10 @@ class DBHelper {
   Future<int> insertVaccine(Map<String, dynamic> vaccine) async {
     final db = await instance.database;
     final id = await db.insert('vaccines', vaccine);
-    await _enqueueSync('vaccines', id.toString(), 'INSERT', {...vaccine, 'id': id});
+    await _enqueueSync('vaccines', id.toString(), 'INSERT', {
+      ...vaccine,
+      'id': id,
+    });
     return id;
   }
 
@@ -685,35 +712,48 @@ class DBHelper {
       String animalName = "Hato General";
       String animalTag = "General";
       if (animalId != null && animalId.isNotEmpty) {
-        final anims = await db.query('animals', columns: ['name', 'tag'], where: 'id = ?', whereArgs: [animalId]);
+        final anims = await db.query(
+          'animals',
+          columns: ['name', 'tag'],
+          where: 'id = ?',
+          whereArgs: [animalId],
+        );
         if (anims.isNotEmpty) {
           animalName = anims.first['name'] as String;
           animalTag = anims.first['tag'] as String;
         }
       }
-      list.add(AlertModel.fromMap(json, animalName: animalName, animalTag: animalTag));
+      list.add(
+        AlertModel.fromMap(json, animalName: animalName, animalTag: animalTag),
+      );
     }
     return list;
   }
 
   Future<int> deleteAlert(String id) async {
     final db = await instance.database;
-    final count = await db.delete(
-      'alerts',
-      where: 'id = ?',
-      whereArgs: [id],
-    );
+    final count = await db.delete('alerts', where: 'id = ?', whereArgs: [id]);
     await _enqueueSync('alerts', id, 'DELETE', null);
     return count;
   }
 
   Future<int> deleteAlertByTag(String tag, String titlePart) async {
     final db = await instance.database;
-    final anims = await db.query('animals', columns: ['id'], where: 'tag = ?', whereArgs: [tag]);
+    final anims = await db.query(
+      'animals',
+      columns: ['id'],
+      where: 'tag = ?',
+      whereArgs: [tag],
+    );
     if (anims.isEmpty) return 0;
     final animalId = anims.first['id'] as String;
 
-    final alerts = await db.query('alerts', columns: ['id'], where: 'animal_id = ? AND title LIKE ?', whereArgs: [animalId, '%$titlePart%']);
+    final alerts = await db.query(
+      'alerts',
+      columns: ['id'],
+      where: 'animal_id = ? AND title LIKE ?',
+      whereArgs: [animalId, '%$titlePart%'],
+    );
     final count = await db.delete(
       'alerts',
       where: 'animal_id = ? AND title LIKE ?',
@@ -729,7 +769,11 @@ class DBHelper {
   Future<int> insertAlert(AlertModel alert) async {
     final db = await instance.database;
     final map = alert.toMap();
-    final count = await db.insert('alerts', map, conflictAlgorithm: ConflictAlgorithm.replace);
+    final count = await db.insert(
+      'alerts',
+      map,
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
     await _enqueueSync('alerts', alert.id, 'INSERT', map);
     return count;
   }
@@ -757,7 +801,9 @@ class DBHelper {
     if (oldVersion < 3) {
       try {
         await db.execute('ALTER TABLE production_records ADD COLUMN turn TEXT');
-        await db.execute('ALTER TABLE production_records ADD COLUMN observation TEXT');
+        await db.execute(
+          'ALTER TABLE production_records ADD COLUMN observation TEXT',
+        );
       } catch (e) {
         debugPrint("Upgrade error adding columns to production_records: $e");
       }
@@ -812,23 +858,43 @@ class DBHelper {
         await db.execute('ALTER TABLE animals ADD COLUMN vet_responsible TEXT');
         await db.execute('ALTER TABLE animals ADD COLUMN prev_diseases TEXT');
         await db.execute('ALTER TABLE animals ADD COLUMN allergies TEXT');
-        await db.execute('ALTER TABLE animals ADD COLUMN current_medication TEXT');
+        await db.execute(
+          'ALTER TABLE animals ADD COLUMN current_medication TEXT',
+        );
         await db.execute('ALTER TABLE animals ADD COLUMN diet_type TEXT');
-        await db.execute('ALTER TABLE animals ADD COLUMN grazing INTEGER NOT NULL DEFAULT 1');
-        await db.execute('ALTER TABLE animals ADD COLUMN balanced_feed INTEGER NOT NULL DEFAULT 0');
-        await db.execute('ALTER TABLE animals ADD COLUMN supplements INTEGER NOT NULL DEFAULT 0');
-        await db.execute('ALTER TABLE animals ADD COLUMN daily_consumption REAL');
-        await db.execute('ALTER TABLE animals ADD COLUMN production_objective TEXT');
+        await db.execute(
+          'ALTER TABLE animals ADD COLUMN grazing INTEGER NOT NULL DEFAULT 1',
+        );
+        await db.execute(
+          'ALTER TABLE animals ADD COLUMN balanced_feed INTEGER NOT NULL DEFAULT 0',
+        );
+        await db.execute(
+          'ALTER TABLE animals ADD COLUMN supplements INTEGER NOT NULL DEFAULT 0',
+        );
+        await db.execute(
+          'ALTER TABLE animals ADD COLUMN daily_consumption REAL',
+        );
+        await db.execute(
+          'ALTER TABLE animals ADD COLUMN production_objective TEXT',
+        );
         await db.execute('ALTER TABLE animals ADD COLUMN finca TEXT');
         await db.execute('ALTER TABLE animals ADD COLUMN lote TEXT');
         await db.execute('ALTER TABLE animals ADD COLUMN potrero TEXT');
         await db.execute('ALTER TABLE animals ADD COLUMN gps_coords TEXT');
         await db.execute('ALTER TABLE animals ADD COLUMN provider TEXT');
-        await db.execute('ALTER TABLE animals ADD COLUMN available_for_sale INTEGER NOT NULL DEFAULT 0');
-        await db.execute('ALTER TABLE animals ADD COLUMN image_front_path TEXT');
+        await db.execute(
+          'ALTER TABLE animals ADD COLUMN available_for_sale INTEGER NOT NULL DEFAULT 0',
+        );
+        await db.execute(
+          'ALTER TABLE animals ADD COLUMN image_front_path TEXT',
+        );
         await db.execute('ALTER TABLE animals ADD COLUMN image_side_path TEXT');
-        await db.execute('ALTER TABLE animals ADD COLUMN cert_sanitary_path TEXT');
-        await db.execute('ALTER TABLE animals ADD COLUMN doc_purchase_path TEXT');
+        await db.execute(
+          'ALTER TABLE animals ADD COLUMN cert_sanitary_path TEXT',
+        );
+        await db.execute(
+          'ALTER TABLE animals ADD COLUMN doc_purchase_path TEXT',
+        );
       } catch (e) {
         debugPrint("Upgrade error version 6: $e");
       }
@@ -851,8 +917,12 @@ class DBHelper {
     }
     if (oldVersion < 8) {
       try {
-        await db.execute("ALTER TABLE user_profile ADD COLUMN status TEXT DEFAULT 'active'");
-        await db.execute("ALTER TABLE user_profile ADD COLUMN license_number TEXT");
+        await db.execute(
+          "ALTER TABLE user_profile ADD COLUMN status TEXT DEFAULT 'active'",
+        );
+        await db.execute(
+          "ALTER TABLE user_profile ADD COLUMN license_number TEXT",
+        );
         await db.execute('''
           CREATE TABLE farm_authorizations (
             id TEXT PRIMARY KEY,
@@ -867,12 +937,22 @@ class DBHelper {
     }
     if (oldVersion < 9) {
       try {
-        await db.execute("ALTER TABLE nutrition_resources ADD COLUMN cost REAL");
-        await db.execute("ALTER TABLE nutrition_resources ADD COLUMN availability TEXT DEFAULT 'Disponible'");
-        await db.execute("ALTER TABLE nutrition_resources ADD COLUMN expiration_date TEXT");
-        await db.execute("ALTER TABLE nutrition_resources ADD COLUMN observations TEXT");
-        
-        await db.execute("ALTER TABLE nutrition_plans ADD COLUMN raw_response TEXT");
+        await db.execute(
+          "ALTER TABLE nutrition_resources ADD COLUMN cost REAL",
+        );
+        await db.execute(
+          "ALTER TABLE nutrition_resources ADD COLUMN availability TEXT DEFAULT 'Disponible'",
+        );
+        await db.execute(
+          "ALTER TABLE nutrition_resources ADD COLUMN expiration_date TEXT",
+        );
+        await db.execute(
+          "ALTER TABLE nutrition_resources ADD COLUMN observations TEXT",
+        );
+
+        await db.execute(
+          "ALTER TABLE nutrition_plans ADD COLUMN raw_response TEXT",
+        );
 
         await db.execute('''
           CREATE TABLE nutrition_requirements (
@@ -883,7 +963,7 @@ class DBHelper {
             stage_notes TEXT
           )
         ''');
-        
+
         await _seedRequirements(db);
       } catch (e) {
         debugPrint("Upgrade error version 9: $e");
@@ -903,14 +983,80 @@ class DBHelper {
           await db.execute('ALTER TABLE animals ADD COLUMN qr_token TEXT');
         } catch (_) {}
         try {
-          await db.execute('ALTER TABLE animals ADD COLUMN qr_is_active INTEGER DEFAULT 1');
+          await db.execute(
+            'ALTER TABLE animals ADD COLUMN qr_is_active INTEGER DEFAULT 1',
+          );
         } catch (_) {}
         try {
-          await db.execute('ALTER TABLE animals ADD COLUMN qr_generated_at TEXT');
+          await db.execute(
+            'ALTER TABLE animals ADD COLUMN qr_generated_at TEXT',
+          );
         } catch (_) {}
       } catch (e) {
         debugPrint("Upgrade error version 11: $e");
       }
+    }
+    if (oldVersion < 12) {
+      try {
+        await db.execute(
+          'ALTER TABLE marketplace_items ADD COLUMN source_animal_id TEXT',
+        );
+        await db.execute(
+          'CREATE UNIQUE INDEX IF NOT EXISTS marketplace_source_animal_idx '
+          'ON marketplace_items(source_animal_id) '
+          'WHERE source_animal_id IS NOT NULL',
+        );
+      } catch (e) {
+        debugPrint('Upgrade error version 12: $e');
+      }
+    }
+    if (oldVersion < 13) {
+      try {
+        await db.execute(
+          'ALTER TABLE marketplace_items ADD COLUMN seller_user_id TEXT',
+        );
+      } catch (e) {
+        debugPrint('Upgrade error version 13: $e');
+      }
+    }
+    if (oldVersion < 14) {
+      final medicineColumns = <String>[
+        'active_ingredient TEXT',
+        'presentation TEXT',
+        'concentration TEXT',
+        'batch_number TEXT',
+        'label_photo_path TEXT',
+        'withdrawal_period TEXT',
+        'indications TEXT',
+        'contraindications TEXT',
+        'notes TEXT',
+        'updated_at TEXT',
+      ];
+      for (final column in medicineColumns) {
+        try {
+          await db.execute('ALTER TABLE medicine_inventory ADD COLUMN $column');
+        } catch (_) {}
+      }
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS medicine_movements (
+          id TEXT PRIMARY KEY,
+          medicine_id TEXT NOT NULL,
+          animal_id TEXT,
+          movement_type TEXT NOT NULL,
+          quantity REAL NOT NULL,
+          reason TEXT,
+          responsible TEXT,
+          created_at TEXT NOT NULL,
+          synced INTEGER DEFAULT 0
+        )
+      ''');
+      await db.execute(
+        'CREATE INDEX IF NOT EXISTS medicine_movements_medicine_idx '
+        'ON medicine_movements(medicine_id, created_at DESC)',
+      );
+    }
+    if (oldVersion < 15) {
+      await _createClinicalCollaborationTables(db);
     }
   }
 
@@ -979,11 +1125,7 @@ class DBHelper {
 
   Future<int> deleteAnimal(String id) async {
     final db = await instance.database;
-    final count = await db.delete(
-      'animals',
-      where: 'id = ?',
-      whereArgs: [id],
-    );
+    final count = await db.delete('animals', where: 'id = ?', whereArgs: [id]);
     await _enqueueSync('animals', id, 'DELETE', null);
     return count;
   }
@@ -1091,13 +1233,15 @@ class DBHelper {
       {
         'created_at': '2026-06-14T12:00:00Z',
         'target_group': 'Vaca Lechera',
-        'suggested_diet': 'Pasto Kikuyo (70%) + Concentrado (20%) + Melaza (10%)',
+        'suggested_diet':
+            'Pasto Kikuyo (70%) + Concentrado (20%) + Melaza (10%)',
         'estimated_cost_per_day': 1.20,
         'projected_savings': 45.0,
         'projected_improvement': '+8% producción (3 sem) / +12% peso (4 sem)',
-        'explanation': 'Tus vacas lecheras necesitan más energía en la tarde para mantener la producción nocturna. Agregar 200g de melaza al concentrado vespertino mejora el rendimiento sin requerir insumos adicionales.',
+        'explanation':
+            'Tus vacas lecheras necesitan más energía en la tarde para mantener la producción nocturna. Agregar 200g de melaza al concentrado vespertino mejora el rendimiento sin requerir insumos adicionales.',
         'status': 'Activo',
-      }
+      },
     ];
     for (var plan in initialPlans) {
       await db.insert('nutrition_plans', plan);
@@ -1149,7 +1293,10 @@ class DBHelper {
     final db = await instance.database;
     final map = resource.toMap();
     final id = await db.insert('nutrition_resources', map);
-    await _enqueueSync('nutrition_resources', id.toString(), 'INSERT', {...map, 'id': id});
+    await _enqueueSync('nutrition_resources', id.toString(), 'INSERT', {
+      ...map,
+      'id': id,
+    });
     return id;
   }
 
@@ -1162,7 +1309,12 @@ class DBHelper {
       where: 'id = ?',
       whereArgs: [resource.id],
     );
-    await _enqueueSync('nutrition_resources', resource.id.toString(), 'UPDATE', map);
+    await _enqueueSync(
+      'nutrition_resources',
+      resource.id.toString(),
+      'UPDATE',
+      map,
+    );
     return count;
   }
 
@@ -1180,7 +1332,10 @@ class DBHelper {
   // --- CRUD DE PLANES DE NUTRICIÓN ---
   Future<List<NutritionPlan>> getAllNutritionPlans() async {
     final db = await instance.database;
-    final result = await db.query('nutrition_plans', orderBy: 'created_at DESC');
+    final result = await db.query(
+      'nutrition_plans',
+      orderBy: 'created_at DESC',
+    );
     return result.map((json) => NutritionPlan.fromMap(json)).toList();
   }
 
@@ -1188,7 +1343,10 @@ class DBHelper {
     final db = await instance.database;
     final map = plan.toMap();
     final id = await db.insert('nutrition_plans', map);
-    await _enqueueSync('nutrition_plans', id.toString(), 'INSERT', {...map, 'id': id});
+    await _enqueueSync('nutrition_plans', id.toString(), 'INSERT', {
+      ...map,
+      'id': id,
+    });
     return id;
   }
 
@@ -1221,12 +1379,17 @@ class DBHelper {
     final db = await instance.database;
     final map = record.toMap();
     final id = await db.insert('weight_records', map);
-    await _enqueueSync('weight_records', id.toString(), 'INSERT', {...map, 'id': id});
+    await _enqueueSync('weight_records', id.toString(), 'INSERT', {
+      ...map,
+      'id': id,
+    });
     return id;
   }
 
   // --- CRUD DE REGISTROS DE PRODUCCIÓN ---
-  Future<List<ProductionRecord>> getProductionRecordsForAnimal(String animalId) async {
+  Future<List<ProductionRecord>> getProductionRecordsForAnimal(
+    String animalId,
+  ) async {
     final db = await instance.database;
     final result = await db.query(
       'production_records',
@@ -1241,18 +1404,20 @@ class DBHelper {
     final db = await instance.database;
     final map = record.toMap();
     final id = await db.insert('production_records', map);
-    await _enqueueSync('production_records', id.toString(), 'INSERT', {...map, 'id': id});
+    await _enqueueSync('production_records', id.toString(), 'INSERT', {
+      ...map,
+      'id': id,
+    });
     return id;
   }
 
   // --- CRUD DE SETTINGS (MOCK SHAREDPREFERENCES) ---
   Future<int> saveSetting(String key, int value) async {
     final db = await instance.database;
-    return await db.insert(
-      'settings',
-      {'key': key, 'value': value},
-      conflictAlgorithm: ConflictAlgorithm.replace,
-    );
+    return await db.insert('settings', {
+      'key': key,
+      'value': value,
+    }, conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
   Future<int?> getSetting(String key) async {
@@ -1291,7 +1456,11 @@ class DBHelper {
   Future<Map<String, dynamic>> getUserProfile() async {
     final db = await instance.database;
     try {
-      final maps = await db.query('user_profile', where: 'id = ?', whereArgs: [1]);
+      final maps = await db.query(
+        'user_profile',
+        where: 'id = ?',
+        whereArgs: [1],
+      );
       if (maps.isNotEmpty) {
         return maps.first;
       }
@@ -1354,7 +1523,8 @@ class DBHelper {
       'owner_name': ownerName,
       'farm_name': farmName,
       'location': location,
-      'email': SupabaseService.instance.currentUser?.email ?? 'usuario@auraagro.ai',
+      'email':
+          SupabaseService.instance.currentUser?.email ?? 'usuario@auraagro.ai',
     };
     await db.insert(
       'profile',
@@ -1384,16 +1554,12 @@ class DBHelper {
 
   Future<void> saveFarmAuthorization(Map<String, dynamic> auth) async {
     final db = await instance.database;
-    await db.insert(
-      'farm_authorizations',
-      {
-        'id': auth['id'],
-        'ganadero_id': auth['ganadero_id'],
-        'veterinario_id': auth['veterinario_id'],
-        'status': auth['status'],
-      },
-      conflictAlgorithm: ConflictAlgorithm.replace,
-    );
+    await db.insert('farm_authorizations', {
+      'id': auth['id'],
+      'ganadero_id': auth['ganadero_id'],
+      'veterinario_id': auth['veterinario_id'],
+      'status': auth['status'],
+    }, conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
   Future<void> deleteFarmAuthorization(String id) async {
@@ -1410,22 +1576,26 @@ class DBHelper {
 
   Future<void> saveDraft(String draftJson) async {
     final db = await instance.database;
-    await db.execute('CREATE TABLE IF NOT EXISTS listing_drafts (id INTEGER PRIMARY KEY, draft_json TEXT, updated_at TEXT)');
-    await db.insert(
-      'listing_drafts',
-      {
-        'id': 1,
-        'draft_json': draftJson,
-        'updated_at': DateTime.now().toIso8601String(),
-      },
-      conflictAlgorithm: ConflictAlgorithm.replace,
+    await db.execute(
+      'CREATE TABLE IF NOT EXISTS listing_drafts (id INTEGER PRIMARY KEY, draft_json TEXT, updated_at TEXT)',
     );
+    await db.insert('listing_drafts', {
+      'id': 1,
+      'draft_json': draftJson,
+      'updated_at': DateTime.now().toIso8601String(),
+    }, conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
   Future<String?> getDraft() async {
     final db = await instance.database;
-    await db.execute('CREATE TABLE IF NOT EXISTS listing_drafts (id INTEGER PRIMARY KEY, draft_json TEXT, updated_at TEXT)');
-    final maps = await db.query('listing_drafts', where: 'id = ?', whereArgs: [1]);
+    await db.execute(
+      'CREATE TABLE IF NOT EXISTS listing_drafts (id INTEGER PRIMARY KEY, draft_json TEXT, updated_at TEXT)',
+    );
+    final maps = await db.query(
+      'listing_drafts',
+      where: 'id = ?',
+      whereArgs: [1],
+    );
     if (maps.isNotEmpty) {
       return maps.first['draft_json'] as String?;
     }
@@ -1434,13 +1604,20 @@ class DBHelper {
 
   Future<void> deleteDraft() async {
     final db = await instance.database;
-    await db.execute('CREATE TABLE IF NOT EXISTS listing_drafts (id INTEGER PRIMARY KEY, draft_json TEXT, updated_at TEXT)');
+    await db.execute(
+      'CREATE TABLE IF NOT EXISTS listing_drafts (id INTEGER PRIMARY KEY, draft_json TEXT, updated_at TEXT)',
+    );
     await db.delete('listing_drafts', where: 'id = ?', whereArgs: [1]);
   }
 
   // --- MÉTODOS DE LA COLA DE SINCRONIZACIÓN Y LIMPIEZA ---
 
-  Future<void> _enqueueSync(String tableName, String recordId, String action, Map<String, dynamic>? data) async {
+  Future<void> _enqueueSync(
+    String tableName,
+    String recordId,
+    String action,
+    Map<String, dynamic>? data,
+  ) async {
     final supabase = SupabaseService.instance;
     if (supabase.isEnabled && supabase.isAuthenticated) {
       try {
@@ -1493,6 +1670,9 @@ class DBHelper {
       await txn.delete('sync_queue');
       await txn.delete('farm_authorizations');
       try {
+        await txn.delete('medicine_movements');
+      } catch (_) {}
+      try {
         await txn.delete('marketplace_items');
       } catch (_) {}
     });
@@ -1507,39 +1687,48 @@ class DBHelper {
         'dry_matter_percentage': 3.5,
         'protein_percentage': 16.0,
         'energy_mcal_per_kg': 2.7,
-        'stage_notes': 'Alta demanda en lactancia. Requiere balance constante de calcio y fósforo.',
+        'stage_notes':
+            'Alta demanda en lactancia. Requiere balance constante de calcio y fósforo.',
       },
       {
         'category': 'Vaca Seca',
         'dry_matter_percentage': 2.0,
         'protein_percentage': 12.0,
         'energy_mcal_per_kg': 2.0,
-        'stage_notes': 'Fase de descanso y transición preparto. Evitar exceso de energía para no engordar.',
+        'stage_notes':
+            'Fase de descanso y transición preparto. Evitar exceso de energía para no engordar.',
       },
       {
         'category': 'Toro Reproductor',
         'dry_matter_percentage': 2.2,
         'protein_percentage': 12.0,
         'energy_mcal_per_kg': 2.3,
-        'stage_notes': 'Mantenimiento de líbido y condición física. Alta importancia de Zinc y Selenio.',
+        'stage_notes':
+            'Mantenimiento de líbido y condición física. Alta importancia de Zinc y Selenio.',
       },
       {
         'category': 'Toro Engorde',
         'dry_matter_percentage': 2.8,
         'protein_percentage': 14.0,
         'energy_mcal_per_kg': 2.8,
-        'stage_notes': 'Enfoque en ganancia de peso (musculatura). Alta energía digestible y carbohidratos.',
+        'stage_notes':
+            'Enfoque en ganancia de peso (musculatura). Alta energía digestible y carbohidratos.',
       },
       {
         'category': 'Ternero',
         'dry_matter_percentage': 3.0,
         'protein_percentage': 18.0,
         'energy_mcal_per_kg': 2.9,
-        'stage_notes': 'Etapa crítica de crecimiento. Alta digestibilidad requerida, fibra tierna y núcleos iniciadores.',
+        'stage_notes':
+            'Etapa crítica de crecimiento. Alta digestibilidad requerida, fibra tierna y núcleos iniciadores.',
       },
     ];
     for (var req in defaultReqs) {
-      await db.insert('nutrition_requirements', req, conflictAlgorithm: ConflictAlgorithm.replace);
+      await db.insert(
+        'nutrition_requirements',
+        req,
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
     }
   }
 
@@ -1586,8 +1775,15 @@ class DBHelper {
         vacunas_al_dia INTEGER NOT NULL DEFAULT 0,
         historial_completo INTEGER NOT NULL DEFAULT 0,
         fotos_calidad INTEGER NOT NULL DEFAULT 0
+        ,source_animal_id TEXT,
+        seller_user_id TEXT
       )
     ''');
+    await db.execute(
+      'CREATE UNIQUE INDEX IF NOT EXISTS marketplace_source_animal_idx '
+      'ON marketplace_items(source_animal_id) '
+      'WHERE source_animal_id IS NOT NULL',
+    );
   }
 
   Future<List<MarketplaceItem>> getAllMarketplaceItems() async {
@@ -1600,8 +1796,67 @@ class DBHelper {
     final db = await instance.database;
     final map = item.toMap();
     final id = await db.insert('marketplace_items', map);
-    await _enqueueSync('marketplace_items', id.toString(), 'INSERT', {...map, 'id': id});
+    await _enqueueSync('marketplace_items', id.toString(), 'INSERT', {
+      ...map,
+      'id': id,
+    });
     return id;
+  }
+
+  Future<int> updateMarketplaceItem(MarketplaceItem item) async {
+    if (item.id == null) throw ArgumentError('La publicación no tiene ID');
+    final db = await instance.database;
+    final map = item.toMap()..remove('id');
+    final count = await db.update(
+      'marketplace_items',
+      map,
+      where: 'id = ?',
+      whereArgs: [item.id],
+    );
+    await _enqueueSync('marketplace_items', item.id.toString(), 'UPDATE', {
+      ...map,
+      'id': item.id,
+    });
+    return count;
+  }
+
+  Future<int> upsertMarketplaceItemForAnimal(MarketplaceItem item) async {
+    final db = await instance.database;
+    final animalId = item.sourceAnimalId;
+    if (animalId == null) return insertMarketplaceItem(item);
+
+    final existing = await db.query(
+      'marketplace_items',
+      columns: ['id'],
+      where: 'source_animal_id = ?',
+      whereArgs: [animalId],
+      limit: 1,
+    );
+    final map = item.toMap()..remove('id');
+    if (existing.isEmpty) {
+      return insertMarketplaceItem(item);
+    }
+
+    final id = existing.first['id'] as int;
+    await db.update('marketplace_items', map, where: 'id = ?', whereArgs: [id]);
+    await _enqueueSync('marketplace_items', id.toString(), 'UPDATE', {
+      ...map,
+      'id': id,
+    });
+    return id;
+  }
+
+  Future<void> deleteMarketplaceItemForAnimal(String animalId) async {
+    final db = await instance.database;
+    final rows = await db.query(
+      'marketplace_items',
+      columns: ['id'],
+      where: 'source_animal_id = ?',
+      whereArgs: [animalId],
+    );
+    for (final row in rows) {
+      await deleteMarketplaceItem(row['id'] as int);
+    }
   }
 
   Future<int> deleteMarketplaceItem(int id) async {
@@ -1668,17 +1923,45 @@ class DBHelper {
     await db.execute('''
       CREATE TABLE medicine_inventory (
         id TEXT PRIMARY KEY,
-        name TEXT,
+        name TEXT NOT NULL,
+        active_ingredient TEXT,
         type TEXT,
-        quantity REAL,
+        presentation TEXT,
+        concentration TEXT,
+        quantity REAL NOT NULL,
         unit TEXT,
         min_stock REAL,
         expiration_date TEXT,
+        batch_number TEXT,
         provider TEXT,
+        label_photo_path TEXT,
+        withdrawal_period TEXT,
+        indications TEXT,
+        contraindications TEXT,
+        notes TEXT,
         created_at TEXT,
+        updated_at TEXT,
         synced INTEGER DEFAULT 0
       )
     ''');
+
+    await db.execute('''
+      CREATE TABLE medicine_movements (
+        id TEXT PRIMARY KEY,
+        medicine_id TEXT NOT NULL,
+        animal_id TEXT,
+        movement_type TEXT NOT NULL,
+        quantity REAL NOT NULL,
+        reason TEXT,
+        responsible TEXT,
+        created_at TEXT NOT NULL,
+        synced INTEGER DEFAULT 0
+      )
+    ''');
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS medicine_movements_medicine_idx '
+      'ON medicine_movements(medicine_id, created_at DESC)',
+    );
 
     await db.execute('''
       CREATE TABLE medical_treatments (
@@ -1725,10 +2008,50 @@ class DBHelper {
     ''');
   }
 
+  Future<void> _createClinicalCollaborationTables(Database db) async {
+    await db.execute('''CREATE TABLE IF NOT EXISTS vet_farm_links (
+      id TEXT PRIMARY KEY, farmer_id TEXT NOT NULL, vet_id TEXT NOT NULL,
+      farm_id TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'pending',
+      permissions TEXT NOT NULL DEFAULT '[]', created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL, expires_at TEXT, synced INTEGER DEFAULT 0)''');
+    await db.execute('''CREATE TABLE IF NOT EXISTS clinical_case_chats (
+      id TEXT PRIMARY KEY, case_id TEXT NOT NULL, animal_id TEXT, farm_id TEXT,
+      farmer_id TEXT NOT NULL, vet_id TEXT NOT NULL, status TEXT NOT NULL,
+      priority TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL,
+      closed_at TEXT, synced INTEGER DEFAULT 0)''');
+    await db.execute('''CREATE TABLE IF NOT EXISTS clinical_case_messages (
+      id TEXT PRIMARY KEY, chat_id TEXT NOT NULL, case_id TEXT,
+      sender_id TEXT NOT NULL, sender_role TEXT, message_type TEXT NOT NULL,
+      message TEXT, media_path TEXT, ai_generated INTEGER DEFAULT 0,
+      created_at TEXT NOT NULL, sync_status TEXT DEFAULT 'pending',
+      synced INTEGER DEFAULT 0)''');
+    await db.execute('''CREATE TABLE IF NOT EXISTS vet_visits (
+      id TEXT PRIMARY KEY, vet_id TEXT NOT NULL, farmer_id TEXT NOT NULL,
+      farm_id TEXT, animal_id TEXT, case_id TEXT, chat_id TEXT,
+      visit_date TEXT, reason TEXT, priority TEXT, status TEXT NOT NULL,
+      notes TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL,
+      synced INTEGER DEFAULT 0)''');
+    await db.execute('''CREATE TABLE IF NOT EXISTS vet_validations (
+      id TEXT PRIMARY KEY, vet_id TEXT NOT NULL, farmer_id TEXT NOT NULL,
+      animal_id TEXT, target_type TEXT NOT NULL, target_id TEXT NOT NULL,
+      status TEXT NOT NULL, comments TEXT, created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL, synced INTEGER DEFAULT 0)''');
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS clinical_messages_chat_idx ON clinical_case_messages(chat_id, created_at)',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS clinical_chats_case_idx ON clinical_case_chats(case_id)',
+    );
+  }
+
   // SOS Cases
   Future<int> insertSosCase(Map<String, dynamic> row) async {
     final db = await instance.database;
-    final count = await db.insert('sos_cases', row, conflictAlgorithm: ConflictAlgorithm.replace);
+    final count = await db.insert(
+      'sos_cases',
+      row,
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
     await _enqueueSync('sos_cases', row['id'] as String, 'INSERT', row);
     return count;
   }
@@ -1741,7 +2064,11 @@ class DBHelper {
   // Animal Exits
   Future<int> insertAnimalExit(Map<String, dynamic> row) async {
     final db = await instance.database;
-    final count = await db.insert('animal_exits', row, conflictAlgorithm: ConflictAlgorithm.replace);
+    final count = await db.insert(
+      'animal_exits',
+      row,
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
     await _enqueueSync('animal_exits', row['id'] as String, 'INSERT', row);
     return count;
   }
@@ -1754,8 +2081,17 @@ class DBHelper {
   // Medicine Inventory
   Future<int> insertMedicine(Map<String, dynamic> row) async {
     final db = await instance.database;
-    final count = await db.insert('medicine_inventory', row, conflictAlgorithm: ConflictAlgorithm.replace);
-    await _enqueueSync('medicine_inventory', row['id'] as String, 'INSERT', row);
+    final count = await db.insert(
+      'medicine_inventory',
+      row,
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+    await _enqueueSync(
+      'medicine_inventory',
+      row['id'] as String,
+      'INSERT',
+      row,
+    );
     return count;
   }
 
@@ -1767,7 +2103,12 @@ class DBHelper {
       where: 'id = ?',
       whereArgs: [row['id']],
     );
-    await _enqueueSync('medicine_inventory', row['id'] as String, 'UPDATE', row);
+    await _enqueueSync(
+      'medicine_inventory',
+      row['id'] as String,
+      'UPDATE',
+      row,
+    );
     return count;
   }
 
@@ -1789,11 +2130,70 @@ class DBHelper {
     return await db.query('medicine_inventory', orderBy: 'name ASC');
   }
 
+  Future<int> deleteMedicine(String id) async {
+    final db = await instance.database;
+    final count = await db.delete(
+      'medicine_inventory',
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+    await _enqueueSync('medicine_inventory', id, 'DELETE', null);
+    return count;
+  }
+
+  Future<int> insertMedicineMovement(Map<String, dynamic> row) async {
+    final db = await instance.database;
+    final count = await db.insert(
+      'medicine_movements',
+      row,
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+    await _enqueueSync(
+      'medicine_movements',
+      row['id'] as String,
+      'INSERT',
+      row,
+    );
+    return count;
+  }
+
+  Future<List<Map<String, dynamic>>> getMedicineMovements({
+    String? medicineId,
+    String? animalId,
+  }) async {
+    final db = await instance.database;
+    final clauses = <String>[];
+    final args = <Object?>[];
+    if (medicineId != null) {
+      clauses.add('medicine_id = ?');
+      args.add(medicineId);
+    }
+    if (animalId != null) {
+      clauses.add('animal_id = ?');
+      args.add(animalId);
+    }
+    return db.query(
+      'medicine_movements',
+      where: clauses.isEmpty ? null : clauses.join(' AND '),
+      whereArgs: args.isEmpty ? null : args,
+      orderBy: 'created_at DESC',
+    );
+  }
+
   // Medical Treatments
   Future<int> insertMedicalTreatment(Map<String, dynamic> row) async {
     final db = await instance.database;
-    final count = await db.insert('medical_treatments', row, conflictAlgorithm: ConflictAlgorithm.replace);
-    await _enqueueSync('medical_treatments', row['id'] as String, 'INSERT', row);
+    final count = await db.insert(
+      'medical_treatments',
+      row,
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+    await _enqueueSync(
+      'medical_treatments',
+      row['id'] as String,
+      'INSERT',
+      row,
+    );
     return count;
   }
 
@@ -1805,8 +2205,17 @@ class DBHelper {
   // Reproduction Records
   Future<int> insertReproductionRecord(Map<String, dynamic> row) async {
     final db = await instance.database;
-    final count = await db.insert('reproduction_records', row, conflictAlgorithm: ConflictAlgorithm.replace);
-    await _enqueueSync('reproduction_records', row['id'] as String, 'INSERT', row);
+    final count = await db.insert(
+      'reproduction_records',
+      row,
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+    await _enqueueSync(
+      'reproduction_records',
+      row['id'] as String,
+      'INSERT',
+      row,
+    );
     return count;
   }
 
@@ -1815,7 +2224,9 @@ class DBHelper {
     return await db.query('reproduction_records', orderBy: 'event_date DESC');
   }
 
-  Future<List<Map<String, dynamic>>> getReproductionRecordsForAnimal(String animalId) async {
+  Future<List<Map<String, dynamic>>> getReproductionRecordsForAnimal(
+    String animalId,
+  ) async {
     final db = await instance.database;
     return await db.query(
       'reproduction_records',
@@ -1828,13 +2239,92 @@ class DBHelper {
   // Operating Expenses
   Future<int> insertOperatingExpense(Map<String, dynamic> row) async {
     final db = await instance.database;
-    final count = await db.insert('operating_expenses', row, conflictAlgorithm: ConflictAlgorithm.replace);
-    await _enqueueSync('operating_expenses', row['id'] as String, 'INSERT', row);
+    final count = await db.insert(
+      'operating_expenses',
+      row,
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+    await _enqueueSync(
+      'operating_expenses',
+      row['id'] as String,
+      'INSERT',
+      row,
+    );
     return count;
   }
 
   Future<List<Map<String, dynamic>>> getAllOperatingExpenses() async {
     final db = await instance.database;
     return await db.query('operating_expenses', orderBy: 'date DESC');
+  }
+
+  Future<int> upsertClinicalRecord(
+    String table,
+    Map<String, dynamic> row, {
+    String action = 'INSERT',
+  }) async {
+    const allowed = {
+      'vet_farm_links',
+      'clinical_case_chats',
+      'clinical_case_messages',
+      'vet_visits',
+      'vet_validations',
+    };
+    if (!allowed.contains(table)) throw ArgumentError('Tabla clínica inválida');
+    final db = await instance.database;
+    final result = await db.insert(
+      table,
+      row,
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+    await _enqueueSync(table, row['id'] as String, action, row);
+    return result;
+  }
+
+  Future<List<Map<String, dynamic>>> getClinicalRecords(
+    String table, {
+    String? where,
+    List<Object?>? whereArgs,
+    String orderBy = 'updated_at DESC',
+  }) async {
+    const allowed = {
+      'vet_farm_links',
+      'clinical_case_chats',
+      'clinical_case_messages',
+      'vet_visits',
+      'vet_validations',
+    };
+    if (!allowed.contains(table)) throw ArgumentError('Tabla clínica inválida');
+    final db = await instance.database;
+    return db.query(
+      table,
+      where: where,
+      whereArgs: whereArgs,
+      orderBy: orderBy,
+    );
+  }
+
+  Future<void> deleteClinicalRecord(String table, String id) async {
+    const allowed = {
+      'vet_farm_links',
+      'clinical_case_chats',
+      'clinical_case_messages',
+      'vet_visits',
+      'vet_validations',
+    };
+    if (!allowed.contains(table)) throw ArgumentError('Tabla clínica inválida');
+    final db = await instance.database;
+    await db.delete(table, where: 'id = ?', whereArgs: [id]);
+    await _enqueueSync(table, id, 'DELETE', null);
+  }
+
+  Future<void> markClinicalMessageSynced(String id) async {
+    final db = await instance.database;
+    await db.update(
+      'clinical_case_messages',
+      {'sync_status': 'synced', 'synced': 1},
+      where: 'id = ?',
+      whereArgs: [id],
+    );
   }
 }

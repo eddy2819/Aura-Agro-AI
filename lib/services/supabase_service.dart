@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
@@ -8,8 +9,9 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 /// Soporta fallback seguro si no se configuran las llaves en el archivo `.env`.
 class SupabaseService {
   static final SupabaseService instance = SupabaseService._init();
-  
+
   bool _initialized = false;
+  RealtimeChannel? _marketplaceNotificationsChannel;
 
   SupabaseService._init();
 
@@ -22,7 +24,9 @@ class SupabaseService {
       final key = dotenv.maybeGet('SUPABASE_ANON_KEY');
       if (url == null || key == null) return false;
       if (url.isEmpty || key.isEmpty) return false;
-      if (url.contains('TU_PROYECTO') || key.contains('TU_ANON_KEY')) return false;
+      if (url.contains('TU_PROYECTO') || key.contains('TU_ANON_KEY')) {
+        return false;
+      }
       return url.startsWith('https://');
     } catch (_) {
       return false;
@@ -37,7 +41,7 @@ class SupabaseService {
       if (_hasValidCredentials()) {
         var url = dotenv.get('SUPABASE_URL').trim();
         final key = dotenv.get('SUPABASE_ANON_KEY').trim();
-        
+
         // Limpiar URL si contiene /rest/v1/ al final
         if (url.endsWith('/rest/v1/')) {
           url = url.substring(0, url.length - 9);
@@ -48,10 +52,7 @@ class SupabaseService {
           url = url.substring(0, url.length - 1);
         }
 
-        await Supabase.initialize(
-          url: url,
-          publishableKey: key,
-        );
+        await Supabase.initialize(url: url, publishableKey: key);
         _initialized = true;
         debugPrint("Supabase initialized successfully on URL: $url");
       } else {
@@ -67,7 +68,9 @@ class SupabaseService {
   /// Cliente directo de Supabase
   SupabaseClient get client {
     if (!isEnabled) {
-      throw Exception("Intento de acceder al cliente de Supabase cuando está inactivo o sin configurar.");
+      throw Exception(
+        "Intento de acceder al cliente de Supabase cuando está inactivo o sin configurar.",
+      );
     }
     return Supabase.instance.client;
   }
@@ -88,6 +91,143 @@ class SupabaseService {
   /// Retorna si hay una sesión activa en Supabase
   bool get isAuthenticated => currentUser != null;
 
+  Future<void> sendMarketplaceNotification({
+    required String recipientUserId,
+    required int? marketplaceLocalId,
+    required String listingTitle,
+    required String type,
+    required String message,
+    double? offerAmount,
+  }) async {
+    final senderId = currentUserId;
+    if (!isEnabled || senderId == null) {
+      throw Exception('Debes iniciar sesión para contactar al vendedor.');
+    }
+    if (recipientUserId == senderId) {
+      throw Exception('No puedes enviarte un mensaje a tu propia publicación.');
+    }
+    await client.from('marketplace_notifications').insert({
+      'recipient_user_id': recipientUserId,
+      'sender_user_id': senderId,
+      'marketplace_local_id': marketplaceLocalId,
+      'listing_title': listingTitle,
+      'notification_type': type,
+      'message': message.trim(),
+      'offer_amount': offerAmount,
+    });
+  }
+
+  Future<String?> resolveMarketplaceSeller({
+    required int? localId,
+    required String title,
+    required double price,
+    String? sourceAnimalId,
+  }) async {
+    if (!isEnabled || !isAuthenticated) return null;
+
+    List<Map<String, dynamic>> rows = [];
+    if (sourceAnimalId != null && sourceAnimalId.isNotEmpty) {
+      final response = await client
+          .from('marketplace_items')
+          .select('user_id')
+          .eq('source_animal_id', sourceAnimalId)
+          .limit(2);
+      rows = List<Map<String, dynamic>>.from(response);
+    }
+    if (rows.isEmpty && localId != null) {
+      final response = await client
+          .from('marketplace_items')
+          .select('user_id')
+          .eq('local_id', localId)
+          .eq('title', title)
+          .limit(2);
+      rows = List<Map<String, dynamic>>.from(response);
+    }
+    if (rows.isEmpty) {
+      final response = await client
+          .from('marketplace_items')
+          .select('user_id')
+          .eq('title', title)
+          .eq('price', price)
+          .limit(2);
+      rows = List<Map<String, dynamic>>.from(response);
+    }
+
+    final sellerIds = rows
+        .map((row) => row['user_id']?.toString())
+        .whereType<String>()
+        .toSet();
+    return sellerIds.length == 1 ? sellerIds.first : null;
+  }
+
+  Future<void> startMarketplaceNotificationListener(
+    void Function(Map<String, dynamic> notification) onNotification,
+  ) async {
+    await stopMarketplaceNotificationListener();
+    final userId = currentUserId;
+    if (!isEnabled || userId == null) return;
+
+    final pending = await client
+        .from('marketplace_notifications')
+        .select()
+        .eq('recipient_user_id', userId)
+        .eq('is_read', false)
+        .order('created_at')
+        .limit(20);
+    for (final row in pending) {
+      final notification = Map<String, dynamic>.from(row);
+      onNotification(notification);
+      await client
+          .from('marketplace_notifications')
+          .update({'is_read': true})
+          .eq('id', notification['id']);
+    }
+
+    _marketplaceNotificationsChannel = client
+        .channel('marketplace-notifications-$userId')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.insert,
+          schema: 'public',
+          table: 'marketplace_notifications',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'recipient_user_id',
+            value: userId,
+          ),
+          callback: (payload) {
+            onNotification(payload.newRecord);
+            final id = payload.newRecord['id'];
+            if (id != null) {
+              unawaited(
+                client
+                    .from('marketplace_notifications')
+                    .update({'is_read': true})
+                    .eq('id', id),
+              );
+            }
+          },
+        )
+        .subscribe();
+  }
+
+  Future<void> stopMarketplaceNotificationListener() async {
+    final channel = _marketplaceNotificationsChannel;
+    _marketplaceNotificationsChannel = null;
+    if (channel != null && isEnabled) {
+      await client.removeChannel(channel);
+    }
+  }
+
+  Future<String?> resolveApprovedVeterinarian(String identifier) async {
+    if (!isEnabled || !isAuthenticated) return null;
+    final result = await client.rpc(
+      'resolve_approved_veterinarian',
+      params: {'identifier': identifier.trim()},
+    );
+    if (result == null) return null;
+    return result.toString();
+  }
+
   // ==========================================
   // AUTENTICACIÓN
   // ==========================================
@@ -105,7 +245,7 @@ class SupabaseService {
     String status = 'active',
   }) async {
     if (!isEnabled) throw Exception("Supabase no está configurado.");
-    
+
     final response = await client.auth.signUp(
       email: email,
       password: password,
@@ -189,10 +329,15 @@ class SupabaseService {
       if (status == 'rejected') {
         await client.from('user_profiles').delete().eq('user_id', userId);
       } else {
-        await client.from('user_profiles').update({'status': status}).eq('user_id', userId);
+        await client
+            .from('user_profiles')
+            .update({'status': status})
+            .eq('user_id', userId);
       }
     } catch (e) {
-      debugPrint("Error al actualizar estado del veterinario ($userId) a $status: $e");
+      debugPrint(
+        "Error al actualizar estado del veterinario ($userId) a $status: $e",
+      );
     }
   }
 
@@ -215,7 +360,9 @@ class SupabaseService {
         .maybeSingle();
 
     if (ganaderoResponse == null) {
-      throw Exception("No se encontró ningún ganadero con ese correo electrónico.");
+      throw Exception(
+        "No se encontró ningún ganadero con ese correo electrónico.",
+      );
     }
 
     final ganaderoId = ganaderoResponse['user_id'] as String;
@@ -229,7 +376,9 @@ class SupabaseService {
         .maybeSingle();
 
     if (existingResponse != null) {
-      throw Exception("Ya existe una solicitud o autorización activa para este ganadero.");
+      throw Exception(
+        "Ya existe una solicitud o autorización activa para este ganadero.",
+      );
     }
 
     // 3. Crear la autorización con estado 'pending'
@@ -241,16 +390,24 @@ class SupabaseService {
   }
 
   /// Responder a una solicitud de autorización (Ganadero)
-  Future<void> respondToAuthorizationRequest(String authId, String status) async {
+  Future<void> respondToAuthorizationRequest(
+    String authId,
+    String status,
+  ) async {
     if (!isEnabled) return;
     try {
       if (status == 'rejected') {
         await client.from('farm_authorizations').delete().eq('id', authId);
       } else {
-        await client.from('farm_authorizations').update({'status': status}).eq('id', authId);
+        await client
+            .from('farm_authorizations')
+            .update({'status': status})
+            .eq('id', authId);
       }
     } catch (e) {
-      debugPrint("Error al responder a la autorización ($authId) con $status: $e");
+      debugPrint(
+        "Error al responder a la autorización ($authId) con $status: $e",
+      );
     }
   }
 
@@ -261,9 +418,7 @@ class SupabaseService {
     if (userId == null) return [];
 
     try {
-      final response = await client
-          .from('farm_authorizations')
-          .select();
+      final response = await client.from('farm_authorizations').select();
 
       final list = List<Map<String, dynamic>>.from(response as List);
       final enrichedList = <Map<String, dynamic>>[];
@@ -324,14 +479,16 @@ class SupabaseService {
       if (user == null) return null;
 
       final path = 'animals/${user.id}/$fileName';
-      
+
       // Subir al bucket 'animal-photos'
-      await client.storage.from('animal-photos').uploadBinary(
-        path,
-        fileBytes,
-        fileOptions: const FileOptions(cacheControl: '3600', upsert: true),
-      );
-      
+      await client.storage
+          .from('animal-photos')
+          .uploadBinary(
+            path,
+            fileBytes,
+            fileOptions: const FileOptions(cacheControl: '3600', upsert: true),
+          );
+
       return path;
     } catch (e) {
       debugPrint("Error al subir foto a Supabase Storage: $e");
@@ -340,15 +497,23 @@ class SupabaseService {
   }
 
   /// Invoca la Edge Function aura-ai para análisis y recomendación nutricional
-  Future<Map<String, dynamic>?> invokeNutritionEdgeFunction(Map<String, dynamic> payload) async {
+  Future<Map<String, dynamic>?> invokeNutritionEdgeFunction(
+    Map<String, dynamic> payload,
+  ) async {
     if (!isEnabled) {
       debugPrint("Supabase deshabilitado. No se puede llamar a Edge Function.");
       return null;
     }
     try {
-      final response = await client.functions.invoke(
-        'aura-ai',
-        body: payload,
+      final response = await client.functions.invoke('aura-ai', body: payload);
+      final responseData = response.data;
+      final responseKeys = responseData is Map
+          ? responseData.keys.map((key) => key.toString()).toList()
+          : <String>[];
+      debugPrint(
+        'aura-ai action=${payload['action'] ?? 'unknown'} '
+        'status=${response.status} type=${responseData.runtimeType} '
+        'keys=$responseKeys',
       );
       if (response.status == 200) {
         if (response.data is Map) {
@@ -363,5 +528,67 @@ class SupabaseService {
       debugPrint("Error invocando Edge Function: $e");
       return null;
     }
+  }
+
+  /// Analiza una foto para sugerir los campos visibles del registro ganadero.
+  /// La respuesta sigue siendo orientativa: el usuario confirma o corrige los
+  /// valores antes de guardar el animal.
+  Future<Map<String, dynamic>?> analyzeAnimalRegistrationPhoto(
+    String filePath,
+  ) async {
+    if (!isEnabled || !isAuthenticated) return null;
+
+    final fileName =
+        'registration_${DateTime.now().millisecondsSinceEpoch}.jpg';
+    final uploadedPath = await uploadAnimalPhoto(filePath, fileName);
+
+    // Si el bucket aún no fue creado, enviamos la imagen comprimida por el
+    // cuerpo de la Edge Function para que el análisis siga funcionando.
+    String? imageBase64;
+    if (uploadedPath == null) {
+      try {
+        imageBase64 = base64Encode(await File(filePath).readAsBytes());
+      } catch (e) {
+        debugPrint('No se pudo preparar la foto para análisis: $e');
+        return null;
+      }
+    }
+
+    final response = await invokeNutritionEdgeFunction({
+      'scope': 'individual',
+      'action': 'analyze_animal_registration',
+      'foto_opcional': ?uploadedPath,
+      if (imageBase64 != null) ...{
+        'foto_base64': imageBase64,
+        'image_base64': imageBase64,
+        'image_mime_type': 'image/jpeg',
+      },
+      'requested_fields': [
+        'category',
+        'breed',
+        'sex',
+        'purpose',
+        'stage',
+        'color',
+        'estimated_weight_kg',
+        'body_condition_estimated',
+        'production_liters_estimated',
+        'description',
+      ],
+      'instructions':
+          'Devuelve solo estimaciones visuales. No inventes datos que no '
+          'puedan inferirse de la foto. Incluye confidence entre 0 y 1.',
+    });
+    if (response == null) return null;
+
+    final nested =
+        response['animal_analysis'] ??
+        response['visual_analysis'] ??
+        response['analysis'];
+    final analysis = nested is Map
+        ? Map<String, dynamic>.from(nested)
+        : Map<String, dynamic>.from(response);
+    debugPrint('Análisis visual recibido: ${jsonEncode(analysis)}');
+    return analysis;
   }
 }

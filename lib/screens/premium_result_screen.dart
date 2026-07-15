@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
@@ -37,6 +39,7 @@ class PremiumResultScreen extends StatefulWidget {
 
 class _PremiumResultScreenState extends State<PremiumResultScreen> {
   bool _isSaved = false;
+  int _resultPage = 0;
   late List<bool> _todayChecks;
   late List<bool> _weekChecks;
   late List<bool> _monitorChecks;
@@ -55,7 +58,9 @@ class _PremiumResultScreenState extends State<PremiumResultScreen> {
 
     // Mock initial comment if history
     if (widget.isFromHistory) {
-      _comments.add("Revisado por Veterinario Autorizado: Plan balanceado. Mantener monitoreo de peso quincenal.");
+      _comments.add(
+        "Revisado por Veterinario Autorizado: Plan balanceado. Mantener monitoreo de peso quincenal.",
+      );
     }
   }
 
@@ -105,7 +110,9 @@ class _PremiumResultScreenState extends State<PremiumResultScreen> {
         final high = widget.result.scenarios['rendimiento'] ?? {};
 
         // Validar si faltan datos
-        final bool hasMissingData = widget.targetAnimals.any((a) => a.weightKg <= 0);
+        final bool hasMissingData = widget.targetAnimals.any(
+          (a) => a.weightKg <= 0,
+        );
 
         return Container(
           height: MediaQuery.of(context).size.height * 0.85,
@@ -145,7 +152,10 @@ class _PremiumResultScreenState extends State<PremiumResultScreen> {
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.warning_amber_rounded, color: AppColors.alertOrange),
+                      const Icon(
+                        Icons.warning_amber_rounded,
+                        color: AppColors.alertOrange,
+                      ),
                       const SizedBox(width: 10),
                       Expanded(
                         child: Text(
@@ -155,7 +165,7 @@ class _PremiumResultScreenState extends State<PremiumResultScreen> {
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                      )
+                      ),
                     ],
                   ),
                 ),
@@ -163,11 +173,24 @@ class _PremiumResultScreenState extends State<PremiumResultScreen> {
               Expanded(
                 child: ListView(
                   children: [
-                    _buildScenarioCard('Económico 💰', eco, AppColors.sandBeige),
+                    _buildScenarioCard(
+                      'Económico 💰',
+                      eco,
+                      AppColors.sandBeige,
+                    ),
                     const SizedBox(height: 16),
-                    _buildScenarioCard('Equilibrado ⚖️ (Recomendado)', eq, AppColors.greenSurface, isBest: true),
+                    _buildScenarioCard(
+                      'Equilibrado ⚖️ (Recomendado)',
+                      eq,
+                      AppColors.greenSurface,
+                      isBest: true,
+                    ),
                     const SizedBox(height: 16),
-                    _buildScenarioCard('Máximo Rendimiento 🚀', high, AppColors.sandBeige),
+                    _buildScenarioCard(
+                      'Máximo Rendimiento 🚀',
+                      high,
+                      AppColors.sandBeige,
+                    ),
                   ],
                 ),
               ),
@@ -178,7 +201,12 @@ class _PremiumResultScreenState extends State<PremiumResultScreen> {
     );
   }
 
-  Widget _buildScenarioCard(String title, Map<dynamic, dynamic> data, Color bgColor, {bool isBest = false}) {
+  Widget _buildScenarioCard(
+    String title,
+    Map<dynamic, dynamic> data,
+    Color bgColor, {
+    bool isBest = false,
+  }) {
     if (data.isEmpty) return const SizedBox.shrink();
     return Container(
       padding: const EdgeInsets.all(18),
@@ -196,10 +224,18 @@ class _PremiumResultScreenState extends State<PremiumResultScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(title, style: AppTextStyles.h2.copyWith(color: AppColors.primaryGreenDark)),
+              Text(
+                title,
+                style: AppTextStyles.h2.copyWith(
+                  color: AppColors.primaryGreenDark,
+                ),
+              ),
               Text(
                 '\$${(data['cost_per_day'] ?? 0.0).toStringAsFixed(2)} / día',
-                style: AppTextStyles.bodyBold.copyWith(color: AppColors.primaryGreen, fontSize: 16),
+                style: AppTextStyles.bodyBold.copyWith(
+                  color: AppColors.primaryGreen,
+                  fontSize: 16,
+                ),
               ),
             ],
           ),
@@ -210,7 +246,10 @@ class _PremiumResultScreenState extends State<PremiumResultScreen> {
           const Divider(height: 20),
           Text(
             'Recomendación AURA:',
-            style: AppTextStyles.caption.copyWith(fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+            style: AppTextStyles.caption.copyWith(
+              fontWeight: FontWeight.bold,
+              color: AppColors.textPrimary,
+            ),
           ),
           Text(
             data['recommendation'] ?? '',
@@ -229,12 +268,12 @@ class _PremiumResultScreenState extends State<PremiumResultScreen> {
           children: [
             TextSpan(
               text: '$label ',
-              style: AppTextStyles.caption.copyWith(fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+              style: AppTextStyles.caption.copyWith(
+                fontWeight: FontWeight.bold,
+                color: AppColors.textPrimary,
+              ),
             ),
-            TextSpan(
-              text: value,
-              style: AppTextStyles.caption,
-            ),
+            TextSpan(text: value, style: AppTextStyles.caption),
           ],
         ),
       ),
@@ -251,7 +290,9 @@ class _PremiumResultScreenState extends State<PremiumResultScreen> {
       showDialog(
         context: context,
         builder: (context) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
           title: Text('Sin Veterinario Autorizado', style: AppTextStyles.h2),
           content: Text(
             'No tienes veterinarios autorizados vinculados a tu cuenta. '
@@ -261,7 +302,10 @@ class _PremiumResultScreenState extends State<PremiumResultScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('Entendido', style: TextStyle(color: AppColors.primaryGreen)),
+              child: const Text(
+                'Entendido',
+                style: TextStyle(color: AppColors.primaryGreen),
+              ),
             ),
           ],
         ),
@@ -273,7 +317,9 @@ class _PremiumResultScreenState extends State<PremiumResultScreen> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
           title: Text('Enviar a Veterinario', style: AppTextStyles.h2),
           content: Column(
             mainAxisSize: MainAxisSize.min,
@@ -289,15 +335,23 @@ class _PremiumResultScreenState extends State<PremiumResultScreen> {
                     backgroundColor: AppColors.greenSurface,
                     child: Icon(Icons.person, color: AppColors.primaryGreen),
                   ),
-                  title: Text(vet['veterinario_name'] ?? 'Veterinario', style: AppTextStyles.bodyBold),
-                  subtitle: Text('Reg: ${vet['license_number'] ?? "N/A"}', style: AppTextStyles.caption),
+                  title: Text(
+                    vet['veterinario_name'] ?? 'Veterinario',
+                    style: AppTextStyles.bodyBold,
+                  ),
+                  subtitle: Text(
+                    'Reg: ${vet['license_number'] ?? "N/A"}',
+                    style: AppTextStyles.caption,
+                  ),
                   onTap: () {
                     Navigator.pop(context);
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                         content: Text(
                           'Plan compartido con ${vet['veterinario_name']} exitosamente.',
-                          style: AppTextStyles.bodyBold.copyWith(color: Colors.white),
+                          style: AppTextStyles.bodyBold.copyWith(
+                            color: Colors.white,
+                          ),
                         ),
                         backgroundColor: AppColors.primaryGreen,
                         behavior: SnackBarBehavior.floating,
@@ -323,6 +377,46 @@ class _PremiumResultScreenState extends State<PremiumResultScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final provider = Provider.of<DataProvider>(context);
+    final role = provider.profile?['role'] ?? 'Ganadero';
+    final pages = [
+      _buildClearSummary(),
+      _buildClearResources(),
+      _buildClearCare(),
+      _buildClearTracking(role == 'Veterinario'),
+    ];
+
+    return Scaffold(
+      backgroundColor: const Color(0xFFF9F8FC),
+      appBar: AppBar(
+        title: const Text('Plan Nutricional AURA'),
+        centerTitle: true,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        foregroundColor: AppColors.primaryGreenDark,
+      ),
+      body: Column(
+        children: [
+          _buildResultStepper(),
+          Expanded(
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 250),
+              child: KeyedSubtree(
+                key: ValueKey(_resultPage),
+                child: pages[_resultPage],
+              ),
+            ),
+          ),
+          _buildResultNavigation(provider),
+        ],
+      ),
+    );
+  }
+
+  // Se conserva temporalmente para facilitar la comparación durante la
+  // transición del diseño y retirar componentes antiguos en una limpieza posterior.
+  // ignore: unused_element
+  Widget _buildLegacyResult(BuildContext context) {
     final provider = Provider.of<DataProvider>(context);
     final userRole = provider.profile?['role'] ?? 'Ganadero';
     final isVeterinario = userRole == 'Veterinario';
@@ -352,7 +446,12 @@ class _PremiumResultScreenState extends State<PremiumResultScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(widget.targetGroup, style: AppTextStyles.h1.copyWith(color: AppColors.primaryGreenDark)),
+                      Text(
+                        widget.targetGroup,
+                        style: AppTextStyles.h1.copyWith(
+                          color: AppColors.primaryGreenDark,
+                        ),
+                      ),
                       const SizedBox(height: 4),
                       Text(
                         'Alcance: ${widget.animalCount == 1 ? "Individual" : "Grupo - " + widget.targetGroup}',
@@ -365,7 +464,10 @@ class _PremiumResultScreenState extends State<PremiumResultScreen> {
                       const SizedBox(height: 10),
                       Text(
                         'Insumo limitante: ${widget.result.limitingResource}',
-                        style: AppTextStyles.bodyBold.copyWith(color: AppColors.alertOrange, fontSize: 13),
+                        style: AppTextStyles.bodyBold.copyWith(
+                          color: AppColors.alertOrange,
+                          fontSize: 13,
+                        ),
                       ),
                     ],
                   ),
@@ -385,7 +487,9 @@ class _PremiumResultScreenState extends State<PremiumResultScreen> {
                           value: widget.result.viabilityScore / 100,
                           strokeWidth: 8,
                           backgroundColor: AppColors.border,
-                          valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primaryGreen),
+                          valueColor: const AlwaysStoppedAnimation<Color>(
+                            AppColors.primaryGreen,
+                          ),
                         ),
                       ),
                       Column(
@@ -393,17 +497,26 @@ class _PremiumResultScreenState extends State<PremiumResultScreen> {
                         children: [
                           Text(
                             '${widget.result.viabilityScore}',
-                            style: AppTextStyles.h2.copyWith(color: AppColors.primaryGreenDark),
+                            style: AppTextStyles.h2.copyWith(
+                              color: AppColors.primaryGreenDark,
+                            ),
                           ),
                           Text(
                             'Viabilidad',
-                            style: AppTextStyles.caption.copyWith(fontSize: 8, fontWeight: FontWeight.bold),
+                            style: AppTextStyles.caption.copyWith(
+                              fontSize: 8,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ],
                       ),
                     ],
                   ),
-                ).animate().scale(delay: 200.ms, duration: 500.ms, curve: Curves.easeOutBack),
+                ).animate().scale(
+                  delay: 200.ms,
+                  duration: 500.ms,
+                  curve: Curves.easeOutBack,
+                ),
               ],
             ),
           ),
@@ -416,32 +529,56 @@ class _PremiumResultScreenState extends State<PremiumResultScreen> {
               decoration: BoxDecoration(
                 color: AppColors.greenSurface,
                 borderRadius: BorderRadius.circular(24),
-                border: Border.all(color: AppColors.primaryGreen.withOpacity(0.25)),
+                border: Border.all(
+                  color: AppColors.primaryGreen.withOpacity(0.25),
+                ),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
                     children: [
-                      const Icon(Icons.camera_alt_rounded, color: AppColors.primaryGreen),
+                      const Icon(
+                        Icons.camera_alt_rounded,
+                        color: AppColors.primaryGreen,
+                      ),
                       const SizedBox(width: 8),
-                      Text('Evaluación Visual de Imagen', style: AppTextStyles.h2.copyWith(color: AppColors.primaryGreenDark)),
+                      Text(
+                        'Evaluación Visual de Imagen',
+                        style: AppTextStyles.h2.copyWith(
+                          color: AppColors.primaryGreenDark,
+                        ),
+                      ),
                     ],
                   ),
                   const Divider(height: 24),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text('Condición Corporal Estimada:', style: AppTextStyles.bodyBold),
+                      Text(
+                        'Condición Corporal Estimada:',
+                        style: AppTextStyles.bodyBold,
+                      ),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 4,
+                        ),
                         decoration: BoxDecoration(
                           color: AppColors.primaryGreen.withOpacity(0.15),
                           borderRadius: BorderRadius.circular(10),
                         ),
                         child: Text(
-                          (widget.result.visualAnalysis!['body_condition_estimated'] ?? 'Adecuada').toString().toUpperCase(),
-                          style: AppTextStyles.bodyBold.copyWith(color: AppColors.primaryGreenDark, fontSize: 12),
+                          (widget
+                                      .result
+                                      .visualAnalysis!['body_condition_estimated'] ??
+                                  'Adecuada')
+                              .toString()
+                              .toUpperCase(),
+                          style: AppTextStyles.bodyBold.copyWith(
+                            color: AppColors.primaryGreenDark,
+                            fontSize: 12,
+                          ),
                         ),
                       ),
                     ],
@@ -454,7 +591,10 @@ class _PremiumResultScreenState extends State<PremiumResultScreen> {
                   const SizedBox(height: 8),
                   Text(
                     'Recomendación visual: ${widget.result.visualAnalysis!['nutritional_improvements'] ?? ""}',
-                    style: AppTextStyles.caption.copyWith(fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                    style: AppTextStyles.caption.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.textPrimary,
+                    ),
                   ),
                   Text(
                     'Confianza: ${widget.result.visualAnalysis!['confidence_level'] ?? "Media"}',
@@ -463,7 +603,11 @@ class _PremiumResultScreenState extends State<PremiumResultScreen> {
                   const SizedBox(height: 12),
                   Text(
                     '⚠️ ${widget.result.visualAnalysis!['disclaimer'] ?? ""}',
-                    style: AppTextStyles.caption.copyWith(color: AppColors.alertOrange, fontSize: 10, fontStyle: FontStyle.italic),
+                    style: AppTextStyles.caption.copyWith(
+                      color: AppColors.alertOrange,
+                      fontSize: 10,
+                      fontStyle: FontStyle.italic,
+                    ),
                   ),
                 ],
               ),
@@ -484,7 +628,10 @@ class _PremiumResultScreenState extends State<PremiumResultScreen> {
               children: [
                 Row(
                   children: [
-                    const Icon(Icons.restaurant_rounded, color: AppColors.primaryGreen),
+                    const Icon(
+                      Icons.restaurant_rounded,
+                      color: AppColors.primaryGreen,
+                    ),
                     const SizedBox(width: 8),
                     Text('Ración Diaria Recomendada', style: AppTextStyles.h2),
                   ],
@@ -492,7 +639,10 @@ class _PremiumResultScreenState extends State<PremiumResultScreen> {
                 const SizedBox(height: 12),
                 Text(
                   widget.result.suggestedDiet,
-                  style: AppTextStyles.bodyBold.copyWith(color: AppColors.primaryGreenDark, fontSize: 16),
+                  style: AppTextStyles.bodyBold.copyWith(
+                    color: AppColors.primaryGreenDark,
+                    fontSize: 16,
+                  ),
                 ),
                 const SizedBox(height: 10),
                 Row(
@@ -541,22 +691,94 @@ class _PremiumResultScreenState extends State<PremiumResultScreen> {
                   },
                   children: [
                     TableRow(
-                      decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: AppColors.border, width: 1.5))),
+                      decoration: const BoxDecoration(
+                        border: Border(
+                          bottom: BorderSide(
+                            color: AppColors.border,
+                            width: 1.5,
+                          ),
+                        ),
+                      ),
                       children: [
-                        Padding(padding: const EdgeInsets.symmetric(vertical: 8), child: Text('Alimento', style: AppTextStyles.caption.copyWith(fontWeight: FontWeight.bold))),
-                        Padding(padding: const EdgeInsets.symmetric(vertical: 8), child: Text('Diario', style: AppTextStyles.caption.copyWith(fontWeight: FontWeight.bold))),
-                        Padding(padding: const EdgeInsets.symmetric(vertical: 8), child: Text('Total Mes', style: AppTextStyles.caption.copyWith(fontWeight: FontWeight.bold))),
-                        Padding(padding: const EdgeInsets.symmetric(vertical: 8), child: Text('Costo/kg', style: AppTextStyles.caption.copyWith(fontWeight: FontWeight.bold))),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          child: Text(
+                            'Alimento',
+                            style: AppTextStyles.caption.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          child: Text(
+                            'Diario',
+                            style: AppTextStyles.caption.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          child: Text(
+                            'Total Mes',
+                            style: AppTextStyles.caption.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          child: Text(
+                            'Costo/kg',
+                            style: AppTextStyles.caption.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
                       ],
                     ),
                     ...widget.result.resourcesTable.map((r) {
                       return TableRow(
-                        decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: AppColors.border, width: 0.5))),
+                        decoration: const BoxDecoration(
+                          border: Border(
+                            bottom: BorderSide(
+                              color: AppColors.border,
+                              width: 0.5,
+                            ),
+                          ),
+                        ),
                         children: [
-                          Padding(padding: const EdgeInsets.symmetric(vertical: 8), child: Text(r['name'] ?? '', style: AppTextStyles.bodyBold.copyWith(fontSize: 12))),
-                          Padding(padding: const EdgeInsets.symmetric(vertical: 8), child: Text('${r['daily_amount']} ${r['unit']}', style: AppTextStyles.caption)),
-                          Padding(padding: const EdgeInsets.symmetric(vertical: 8), child: Text('${r['total_amount']} ${r['unit']}', style: AppTextStyles.caption)),
-                          Padding(padding: const EdgeInsets.symmetric(vertical: 8), child: Text('\$${(r['cost'] ?? 0.0).toStringAsFixed(2)}', style: AppTextStyles.caption)),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            child: Text(
+                              r['name'] ?? '',
+                              style: AppTextStyles.bodyBold.copyWith(
+                                fontSize: 12,
+                              ),
+                            ),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            child: Text(
+                              '${r['daily_amount']} ${r['unit']}',
+                              style: AppTextStyles.caption,
+                            ),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            child: Text(
+                              '${r['total_amount']} ${r['unit']}',
+                              style: AppTextStyles.caption,
+                            ),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            child: Text(
+                              '\$${(r['cost'] ?? 0.0).toStringAsFixed(2)}',
+                              style: AppTextStyles.caption,
+                            ),
+                          ),
                         ],
                       );
                     }),
@@ -581,7 +803,10 @@ class _PremiumResultScreenState extends State<PremiumResultScreen> {
                 children: [
                   Row(
                     children: [
-                      const Icon(Icons.warning_amber_rounded, color: AppColors.alertRed),
+                      const Icon(
+                        Icons.warning_amber_rounded,
+                        color: AppColors.alertRed,
+                      ),
                       const SizedBox(width: 8),
                       Text('Alertas de Nutrición', style: AppTextStyles.h2),
                     ],
@@ -593,9 +818,20 @@ class _PremiumResultScreenState extends State<PremiumResultScreen> {
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Icon(Icons.circle, size: 8, color: AppColors.alertRed),
+                          const Icon(
+                            Icons.circle,
+                            size: 8,
+                            color: AppColors.alertRed,
+                          ),
                           const SizedBox(width: 8),
-                          Expanded(child: Text(a, style: AppTextStyles.caption.copyWith(color: AppColors.alertRed))),
+                          Expanded(
+                            child: Text(
+                              a,
+                              style: AppTextStyles.caption.copyWith(
+                                color: AppColors.alertRed,
+                              ),
+                            ),
+                          ),
                         ],
                       ),
                     );
@@ -619,10 +855,15 @@ class _PremiumResultScreenState extends State<PremiumResultScreen> {
               children: [
                 Row(
                   children: [
-                    const Icon(Icons.trending_up_rounded, color: AppColors.primaryGreen),
+                    const Icon(
+                      Icons.trending_up_rounded,
+                      color: AppColors.primaryGreen,
+                    ),
                     const SizedBox(width: 8),
                     Text(
-                      widget.targetGroup.contains('Lechera') ? 'Proyección de Producción (L)' : 'Proyección de Peso (kg)',
+                      widget.targetGroup.contains('Lechera')
+                          ? 'Proyección de Producción (L)'
+                          : 'Proyección de Peso (kg)',
                       style: AppTextStyles.h2,
                     ),
                   ],
@@ -634,8 +875,12 @@ class _PremiumResultScreenState extends State<PremiumResultScreen> {
                     LineChartData(
                       gridData: FlGridData(show: true, drawVerticalLine: false),
                       titlesData: FlTitlesData(
-                        rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                        topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                        rightTitles: const AxisTitles(
+                          sideTitles: SideTitles(showTitles: false),
+                        ),
+                        topTitles: const AxisTitles(
+                          sideTitles: SideTitles(showTitles: false),
+                        ),
                         bottomTitles: AxisTitles(
                           sideTitles: SideTitles(
                             showTitles: true,
@@ -643,7 +888,12 @@ class _PremiumResultScreenState extends State<PremiumResultScreen> {
                               final text = value == 0
                                   ? 'Inicio'
                                   : 'Sem ${value.toInt()}';
-                              return Text(text, style: AppTextStyles.caption.copyWith(fontSize: 9));
+                              return Text(
+                                text,
+                                style: AppTextStyles.caption.copyWith(
+                                  fontSize: 9,
+                                ),
+                              );
                             },
                           ),
                         ),
@@ -651,9 +901,15 @@ class _PremiumResultScreenState extends State<PremiumResultScreen> {
                       borderData: FlBorderData(show: false),
                       lineBarsData: [
                         LineChartBarData(
-                          spots: List.generate(widget.result.projectionData.length, (index) {
-                            return FlSpot(index.toDouble(), widget.result.projectionData[index]);
-                          }),
+                          spots: List.generate(
+                            widget.result.projectionData.length,
+                            (index) {
+                              return FlSpot(
+                                index.toDouble(),
+                                widget.result.projectionData[index],
+                              );
+                            },
+                          ),
                           isCurved: true,
                           color: AppColors.primaryGreen,
                           barWidth: 4,
@@ -666,7 +922,10 @@ class _PremiumResultScreenState extends State<PremiumResultScreen> {
                 const SizedBox(height: 10),
                 Text(
                   'Nota: Estas proyecciones son orientativas basadas en modelos biológicos ideales y no representan una garantía de rendimiento.',
-                  style: AppTextStyles.caption.copyWith(fontStyle: FontStyle.italic, fontSize: 10),
+                  style: AppTextStyles.caption.copyWith(
+                    fontStyle: FontStyle.italic,
+                    fontSize: 10,
+                  ),
                 ),
               ],
             ),
@@ -684,13 +943,28 @@ class _PremiumResultScreenState extends State<PremiumResultScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Tareas Nutricionales Recomendadas', style: AppTextStyles.h2),
+                Text(
+                  'Tareas Nutricionales Recomendadas',
+                  style: AppTextStyles.h2,
+                ),
                 const Divider(height: 24),
-                _taskListSection('Haz hoy 🔴', widget.result.taskToday, _todayChecks),
+                _taskListSection(
+                  'Haz hoy 🔴',
+                  widget.result.taskToday,
+                  _todayChecks,
+                ),
                 const SizedBox(height: 14),
-                _taskListSection('Esta semana 🟡', widget.result.taskWeek, _weekChecks),
+                _taskListSection(
+                  'Esta semana 🟡',
+                  widget.result.taskWeek,
+                  _weekChecks,
+                ),
                 const SizedBox(height: 14),
-                _taskListSection('Monitorear 🟢', widget.result.taskMonitor, _monitorChecks),
+                _taskListSection(
+                  'Monitorear 🟢',
+                  widget.result.taskMonitor,
+                  _monitorChecks,
+                ),
               ],
             ),
           ),
@@ -710,7 +984,10 @@ class _PremiumResultScreenState extends State<PremiumResultScreen> {
                 Text('Validación del Veterinario', style: AppTextStyles.h2),
                 const SizedBox(height: 12),
                 if (_comments.isEmpty)
-                  Text('Aún no hay comentarios ni validaciones de un veterinario.', style: AppTextStyles.body)
+                  Text(
+                    'Aún no hay comentarios ni validaciones de un veterinario.',
+                    style: AppTextStyles.body,
+                  )
                 else
                   ..._comments.map((comment) {
                     return Container(
@@ -720,7 +997,12 @@ class _PremiumResultScreenState extends State<PremiumResultScreen> {
                         color: AppColors.sandBeige,
                         borderRadius: BorderRadius.circular(14),
                       ),
-                      child: Text(comment, style: AppTextStyles.caption.copyWith(color: AppColors.textPrimary)),
+                      child: Text(
+                        comment,
+                        style: AppTextStyles.caption.copyWith(
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
                     );
                   }),
                 if (isVeterinario) ...[
@@ -733,14 +1015,19 @@ class _PremiumResultScreenState extends State<PremiumResultScreen> {
                           decoration: InputDecoration(
                             hintText: 'Añadir recomendación veterinaria...',
                             hintStyle: AppTextStyles.caption,
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
                           ),
                           style: AppTextStyles.body,
                         ),
                       ),
                       const SizedBox(width: 8),
                       IconButton(
-                        icon: const Icon(Icons.send_rounded, color: AppColors.primaryGreen),
+                        icon: const Icon(
+                          Icons.send_rounded,
+                          color: AppColors.primaryGreen,
+                        ),
                         onPressed: _addComment,
                       ),
                     ],
@@ -763,7 +1050,9 @@ class _PremiumResultScreenState extends State<PremiumResultScreen> {
                     backgroundColor: AppColors.sandBeige,
                     foregroundColor: AppColors.primaryGreenDark,
                     padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
                     elevation: 0,
                   ),
                 ),
@@ -779,7 +1068,9 @@ class _PremiumResultScreenState extends State<PremiumResultScreen> {
                       backgroundColor: AppColors.primaryGreen.withOpacity(0.12),
                       foregroundColor: AppColors.primaryGreenDark,
                       padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
                       elevation: 0,
                     ),
                   ),
@@ -803,11 +1094,654 @@ class _PremiumResultScreenState extends State<PremiumResultScreen> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primaryGreen,
                 padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
               ),
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  String get _scopeTitle {
+    if (widget.animalCount == 1 && widget.targetAnimals.isNotEmpty) {
+      return widget.targetAnimals.first.name;
+    }
+    if (widget.targetGroup == 'Todo el Hato') return 'Toda la finca';
+    return widget.targetGroup;
+  }
+
+  String get _scopeLabel {
+    if (widget.animalCount == 1) return 'Individual';
+    if (widget.targetGroup == 'Todo el Hato') return 'Plan de finca';
+    return 'Grupo';
+  }
+
+  int get _viabilityTen {
+    final score = widget.result.viabilityScore;
+    return score <= 10 ? score.clamp(0, 10) : (score / 10).round().clamp(0, 10);
+  }
+
+  Widget _buildResultStepper() {
+    const labels = ['Resumen', 'Recursos', 'Cuidados', 'Seguimiento'];
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+      child: Row(
+        children: List.generate(labels.length, (index) {
+          final active = index == _resultPage;
+          final done = index < _resultPage;
+          return Expanded(
+            child: InkWell(
+              borderRadius: BorderRadius.circular(12),
+              onTap: () => setState(() => _resultPage = index),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Column(
+                  children: [
+                    Container(
+                      height: 5,
+                      margin: const EdgeInsets.symmetric(horizontal: 3),
+                      decoration: BoxDecoration(
+                        color: active || done
+                            ? AppColors.primaryGreen
+                            : AppColors.border,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    const SizedBox(height: 5),
+                    Text(
+                      labels[index],
+                      style: AppTextStyles.caption.copyWith(
+                        fontSize: 10,
+                        fontWeight: active
+                            ? FontWeight.bold
+                            : FontWeight.normal,
+                        color: active
+                            ? AppColors.primaryGreenDark
+                            : AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }),
+      ),
+    );
+  }
+
+  Widget _resultScroll(List<Widget> children) => ListView(
+    padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+    children: children,
+  );
+
+  Widget _resultCard({required Widget child, Color? color}) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: color ?? Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: AppColors.border),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: child,
+    );
+  }
+
+  Widget _scopeAvatar() {
+    if (widget.animalCount == 1 && widget.targetAnimals.isNotEmpty) {
+      final path = widget.targetAnimals.first.imagePath;
+      if (path != null && path.isNotEmpty) {
+        if (path.startsWith('http')) {
+          return CircleAvatar(radius: 44, backgroundImage: NetworkImage(path));
+        }
+        final file = File(path);
+        if (file.existsSync()) {
+          return CircleAvatar(radius: 44, backgroundImage: FileImage(file));
+        }
+      }
+    }
+    return CircleAvatar(
+      radius: 44,
+      backgroundColor: AppColors.greenSurface,
+      child: Icon(
+        widget.animalCount == 1
+            ? Icons.pets_rounded
+            : widget.targetGroup == 'Todo el Hato'
+            ? Icons.agriculture_rounded
+            : Icons.groups_rounded,
+        size: 42,
+        color: AppColors.primaryGreen,
+      ),
+    );
+  }
+
+  Widget _buildClearSummary() {
+    final alert = widget.result.alerts.isNotEmpty
+        ? widget.result.alerts.first
+        : widget.result.limitingResource;
+    final dietParts = widget.result.suggestedDiet
+        .split('+')
+        .map((e) => e.trim())
+        .where((e) => e.isNotEmpty)
+        .take(3)
+        .toList();
+
+    return _resultScroll([
+      _resultCard(
+        child: Column(
+          children: [
+            Row(
+              children: [
+                _scopeAvatar(),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _scopeTitle,
+                        style: AppTextStyles.h1.copyWith(
+                          color: AppColors.primaryGreenDark,
+                        ),
+                      ),
+                      const SizedBox(height: 5),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 5,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.greenSurface,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Text(_scopeLabel, style: AppTextStyles.caption),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        '${widget.animalCount} ${widget.animalCount == 1 ? 'animal cubierto' : 'animales cubiertos'}',
+                        style: AppTextStyles.caption,
+                      ),
+                    ],
+                  ),
+                ),
+                SizedBox(
+                  width: 78,
+                  height: 78,
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      CircularProgressIndicator(
+                        value: _viabilityTen / 10,
+                        strokeWidth: 8,
+                        backgroundColor: AppColors.border,
+                        color: AppColors.primaryGreen,
+                      ),
+                      Text(
+                        '$_viabilityTen/10',
+                        style: AppTextStyles.bodyBold.copyWith(
+                          color: AppColors.primaryGreenDark,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const Divider(height: 30),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const CircleAvatar(
+                  backgroundColor: Color(0xFFFFE9E5),
+                  child: Icon(
+                    Icons.warning_amber_rounded,
+                    color: AppColors.alertRed,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Punto principal a mejorar',
+                        style: AppTextStyles.bodyBold,
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        alert,
+                        style: AppTextStyles.body.copyWith(
+                          color: AppColors.alertRed,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+      const SizedBox(height: 16),
+      _resultCard(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _simpleSectionTitle(Icons.eco_rounded, 'Ración recomendada'),
+            const SizedBox(height: 14),
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: dietParts.map((part) => _dietChip(part)).toList(),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: _metricBox(
+                    Icons.attach_money,
+                    'Costo por día',
+                    '\$${widget.result.estimatedCostPerDay.toStringAsFixed(2)}',
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _metricBox(
+                    Icons.savings_rounded,
+                    'Ahorro semanal',
+                    '\$${widget.result.projectedSavings.toStringAsFixed(0)}',
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    ]);
+  }
+
+  Widget _simpleSectionTitle(IconData icon, String title) => Row(
+    children: [
+      CircleAvatar(
+        backgroundColor: AppColors.greenSurface,
+        child: Icon(icon, color: AppColors.primaryGreen),
+      ),
+      const SizedBox(width: 10),
+      Expanded(child: Text(title, style: AppTextStyles.h2)),
+    ],
+  );
+
+  Widget _dietChip(String text) {
+    final match = RegExp(r'(\d+(?:\.\d+)?)%').firstMatch(text);
+    final title = text.replaceAll(RegExp(r'\([^)]*\)'), '').trim();
+    return Container(
+      width: 145,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.greenSurface,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: AppColors.primaryGreen.withValues(alpha: 0.25),
+        ),
+      ),
+      child: Column(
+        children: [
+          const Icon(Icons.grass_rounded, color: AppColors.primaryGreen),
+          const SizedBox(height: 5),
+          Text(
+            title,
+            textAlign: TextAlign.center,
+            style: AppTextStyles.bodyBold,
+          ),
+          if (match != null)
+            Text(
+              '${match.group(1)}%',
+              style: AppTextStyles.h2.copyWith(color: AppColors.primaryGreen),
+            ),
+        ],
+      ),
+    );
+  }
+
+  String _resourceValue(
+    Map<String, dynamic> row,
+    List<String> keys, [
+    String fallback = '—',
+  ]) {
+    for (final key in keys) {
+      final value = row[key];
+      if (value != null && value.toString().isNotEmpty) return value.toString();
+    }
+    return fallback;
+  }
+
+  Widget _buildClearResources() {
+    return _resultScroll([
+      _resultCard(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _simpleSectionTitle(
+              Icons.inventory_2_outlined,
+              'Recursos necesarios',
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Cantidades indicadas por la IA para preparar el plan.',
+              style: AppTextStyles.caption,
+            ),
+            const SizedBox(height: 14),
+            if (widget.result.resourcesTable.isEmpty)
+              Text(widget.result.suggestedDiet, style: AppTextStyles.body)
+            else
+              ...widget.result.resourcesTable.map((row) => _resourceRow(row)),
+          ],
+        ),
+      ),
+      const SizedBox(height: 16),
+      _resultCard(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _simpleSectionTitle(
+              Icons.home_work_outlined,
+              'Disponible en finca',
+            ),
+            const SizedBox(height: 12),
+            Text(
+              widget.confirmedResources.map((e) => e.name).join(', '),
+              style: AppTextStyles.body,
+            ),
+            const Divider(height: 26),
+            Text('Recurso limitante', style: AppTextStyles.bodyBold),
+            const SizedBox(height: 4),
+            Text(widget.result.limitingResource, style: AppTextStyles.caption),
+          ],
+        ),
+      ),
+    ]);
+  }
+
+  Widget _resourceRow(Map<String, dynamic> row) {
+    final name = _resourceValue(row, ['resource_name', 'name'], 'Recurso');
+    final daily = _resourceValue(row, ['daily_intake', 'daily_amount']);
+    final cost = _resourceValue(row, ['cost_contribution', 'cost']);
+    final status = _resourceValue(row, ['status'], 'Requerido');
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        border: Border.all(color: AppColors.border),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        children: [
+          const CircleAvatar(
+            backgroundColor: AppColors.greenSurface,
+            child: Icon(Icons.eco_outlined, color: AppColors.primaryGreen),
+          ),
+          const SizedBox(width: 12),
+          Expanded(child: Text(name, style: AppTextStyles.bodyBold)),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                daily,
+                style: AppTextStyles.bodyBold.copyWith(
+                  color: AppColors.primaryGreen,
+                ),
+              ),
+              Text(
+                '$cost · $status',
+                style: AppTextStyles.caption.copyWith(fontSize: 10),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildClearCare() {
+    return _resultScroll([
+      if (widget.result.alerts.isNotEmpty)
+        _resultCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _simpleSectionTitle(
+                Icons.warning_amber_rounded,
+                'Alertas importantes',
+              ),
+              const SizedBox(height: 12),
+              ...widget.result.alerts.map(
+                (alert) => ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const CircleAvatar(
+                    backgroundColor: Color(0xFFFFE9E5),
+                    child: Icon(
+                      Icons.priority_high_rounded,
+                      color: AppColors.alertRed,
+                    ),
+                  ),
+                  title: Text(alert, style: AppTextStyles.body),
+                ),
+              ),
+            ],
+          ),
+        ),
+      const SizedBox(height: 16),
+      _resultCard(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _simpleSectionTitle(Icons.checklist_rounded, 'Qué hacer'),
+            const SizedBox(height: 12),
+            _taskListSection('Hoy', widget.result.taskToday, _todayChecks),
+            const Divider(),
+            _taskListSection(
+              'Esta semana',
+              widget.result.taskWeek,
+              _weekChecks,
+            ),
+            const Divider(),
+            _taskListSection(
+              'Monitorear',
+              widget.result.taskMonitor,
+              _monitorChecks,
+            ),
+          ],
+        ),
+      ),
+    ]);
+  }
+
+  Widget _buildClearTracking(bool isVeterinario) {
+    return _resultScroll([
+      _resultCard(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _simpleSectionTitle(
+              Icons.show_chart_rounded,
+              'Seguimiento del plan',
+            ),
+            const SizedBox(height: 18),
+            SizedBox(height: 190, child: _clearProjectionChart()),
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: AppColors.greenSurface,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                'Si se cumple la dieta, revisa semanalmente la evolución.',
+                style: AppTextStyles.caption,
+              ),
+            ),
+          ],
+        ),
+      ),
+      const SizedBox(height: 16),
+      _resultCard(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _simpleSectionTitle(
+              Icons.health_and_safety_outlined,
+              'Validación del veterinario',
+            ),
+            const SizedBox(height: 14),
+            if (_comments.isEmpty)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(22),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF8F5FF),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: Colors.deepPurple.withValues(alpha: 0.25),
+                  ),
+                ),
+                child: Text(
+                  'Aún no hay comentarios del veterinario.',
+                  textAlign: TextAlign.center,
+                  style: AppTextStyles.body,
+                ),
+              )
+            else
+              ..._comments.map(
+                (comment) => Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Text(comment, style: AppTextStyles.body),
+                ),
+              ),
+            if (isVeterinario) ...[
+              const SizedBox(height: 12),
+              TextField(
+                controller: _commentController,
+                decoration: InputDecoration(
+                  hintText: 'Añadir observación...',
+                  suffixIcon: IconButton(
+                    icon: const Icon(Icons.send),
+                    onPressed: _addComment,
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    ]);
+  }
+
+  Widget _clearProjectionChart() {
+    final values = widget.result.projectionData;
+    if (values.isEmpty)
+      return Center(
+        child: Text('Sin proyección disponible', style: AppTextStyles.caption),
+      );
+    return LineChart(
+      LineChartData(
+        gridData: FlGridData(show: true, drawVerticalLine: false),
+        borderData: FlBorderData(show: false),
+        titlesData: FlTitlesData(
+          topTitles: const AxisTitles(
+            sideTitles: SideTitles(showTitles: false),
+          ),
+          rightTitles: const AxisTitles(
+            sideTitles: SideTitles(showTitles: false),
+          ),
+          bottomTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              getTitlesWidget: (value, meta) => Text(
+                'Sem ${value.toInt() + 1}',
+                style: AppTextStyles.caption.copyWith(fontSize: 9),
+              ),
+            ),
+          ),
+        ),
+        lineBarsData: [
+          LineChartBarData(
+            spots: List.generate(
+              values.length,
+              (index) => FlSpot(index.toDouble(), values[index]),
+            ),
+            isCurved: true,
+            color: AppColors.primaryGreen,
+            barWidth: 4,
+            dotData: const FlDotData(show: true),
+            belowBarData: BarAreaData(
+              show: true,
+              color: AppColors.greenSurface,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildResultNavigation(DataProvider provider) {
+    final last = _resultPage == 3;
+    return SafeArea(
+      top: false,
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          border: Border(top: BorderSide(color: AppColors.border)),
+        ),
+        child: Row(
+          children: [
+            if (_resultPage > 0) ...[
+              IconButton.outlined(
+                onPressed: () => setState(() => _resultPage--),
+                icon: const Icon(Icons.arrow_back_rounded),
+              ),
+              const SizedBox(width: 10),
+            ],
+            Expanded(
+              child: ElevatedButton.icon(
+                onPressed: last
+                    ? (_isSaved ? null : () => _savePlan(provider))
+                    : () => setState(() => _resultPage++),
+                icon: Icon(
+                  last
+                      ? (_isSaved ? Icons.check_circle : Icons.save_rounded)
+                      : Icons.arrow_forward_rounded,
+                ),
+                label: Text(
+                  last
+                      ? (_isSaved ? 'Plan guardado' : 'Guardar plan')
+                      : 'Continuar',
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primaryGreen,
+                  foregroundColor: Colors.white,
+                  minimumSize: const Size.fromHeight(52),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

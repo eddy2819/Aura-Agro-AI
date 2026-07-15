@@ -42,7 +42,7 @@ class LiquidGlassBottomNav extends StatelessWidget {
         borderRadius: BorderRadius.circular(28),
         child: BackdropFilter(
           // ── EFECTO LIQUID GLASS: blur del contenido detrás ──
-          filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
           child: Container(
             height: 72,
             decoration: BoxDecoration(

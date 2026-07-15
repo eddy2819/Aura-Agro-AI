@@ -8,6 +8,7 @@ import '../theme/app_text_styles.dart';
 import '../widgets/navigation/top_app_bar.dart';
 import '../widgets/veterinario/clinical_alert_card.dart';
 import '../widgets/veterinario/vet_profile_card.dart';
+import 'chat/clinical_case_chat_screen.dart';
 
 class VeterinarioScreen extends StatefulWidget {
   const VeterinarioScreen({super.key});
@@ -17,13 +18,16 @@ class VeterinarioScreen extends StatefulWidget {
 }
 
 class _VeterinarioScreenState extends State<VeterinarioScreen> {
-  final _tabs = const ['Alertas', 'Tratamientos', 'Vacunas', 'Fincas'];
+  final _tabs = const ['Alertas', 'Tratamientos', 'Chats', 'Vacunas', 'Fincas'];
 
   void _showAddVaccineDialog(BuildContext context, DataProvider provider) {
     if (provider.animals.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Registre primero un animal en la sección "Ganado"', style: AppTextStyles.bodyBold.copyWith(color: Colors.white)),
+          content: Text(
+            'Registre primero un animal en la sección "Ganado"',
+            style: AppTextStyles.bodyBold.copyWith(color: Colors.white),
+          ),
           backgroundColor: AppColors.alertOrange,
         ),
       );
@@ -54,7 +58,12 @@ class _VeterinarioScreenState extends State<VeterinarioScreen> {
                   topRight: Radius.circular(28),
                 ),
               ),
-              padding: EdgeInsets.fromLTRB(20, 20, 20, MediaQuery.of(context).viewInsets.bottom + 20),
+              padding: EdgeInsets.fromLTRB(
+                20,
+                20,
+                20,
+                MediaQuery.of(context).viewInsets.bottom + 20,
+              ),
               child: SingleChildScrollView(
                 child: Form(
                   key: formKey,
@@ -81,8 +90,14 @@ class _VeterinarioScreenState extends State<VeterinarioScreen> {
                         decoration: InputDecoration(
                           labelText: 'Seleccionar Animal',
                           labelStyle: AppTextStyles.caption,
-                          prefixIcon: const Icon(LucideIcons.beef, size: 20, color: AppColors.primaryGreen),
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                          prefixIcon: const Icon(
+                            LucideIcons.beef,
+                            size: 20,
+                            color: AppColors.primaryGreen,
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                         ),
                         items: provider.animals.map((a) {
                           return DropdownMenuItem(
@@ -105,14 +120,26 @@ class _VeterinarioScreenState extends State<VeterinarioScreen> {
                         decoration: InputDecoration(
                           labelText: 'Nombre de la Vacuna (Ej: Fiebre Aftosa)',
                           labelStyle: AppTextStyles.caption,
-                          prefixIcon: const Icon(LucideIcons.syringe, size: 20, color: AppColors.primaryGreen),
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                          prefixIcon: const Icon(
+                            LucideIcons.syringe,
+                            size: 20,
+                            color: AppColors.primaryGreen,
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: AppColors.primaryGreen, width: 2),
+                            borderSide: const BorderSide(
+                              color: AppColors.primaryGreen,
+                              width: 2,
+                            ),
                           ),
                         ),
-                        validator: (value) => value == null || value.trim().isEmpty ? 'Ingrese la vacuna' : null,
+                        validator: (value) =>
+                            value == null || value.trim().isEmpty
+                            ? 'Ingrese la vacuna'
+                            : null,
                       ),
                       const SizedBox(height: 14),
 
@@ -124,15 +151,23 @@ class _VeterinarioScreenState extends State<VeterinarioScreen> {
                         decoration: InputDecoration(
                           labelText: 'Fecha de Aplicación',
                           labelStyle: AppTextStyles.caption,
-                          prefixIcon: const Icon(LucideIcons.calendar, size: 20, color: AppColors.primaryGreen),
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                          prefixIcon: const Icon(
+                            LucideIcons.calendar,
+                            size: 20,
+                            color: AppColors.primaryGreen,
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                         ),
                         onTap: () async {
                           final picked = await showDatePicker(
                             context: context,
                             initialDate: DateTime.now(),
                             firstDate: DateTime(2020),
-                            lastDate: DateTime.now().add(const Duration(days: 365)),
+                            lastDate: DateTime.now().add(
+                              const Duration(days: 365),
+                            ),
                             builder: (context, child) {
                               return Theme(
                                 data: Theme.of(context).copyWith(
@@ -148,7 +183,9 @@ class _VeterinarioScreenState extends State<VeterinarioScreen> {
                           );
                           if (picked != null) {
                             setModalState(() {
-                              dateController.text = picked.toIso8601String().split('T')[0];
+                              dateController.text = picked
+                                  .toIso8601String()
+                                  .split('T')[0];
                             });
                           }
                         },
@@ -162,14 +199,26 @@ class _VeterinarioScreenState extends State<VeterinarioScreen> {
                         decoration: InputDecoration(
                           labelText: 'Dosis (Ej: 5 ml, 2 ml)',
                           labelStyle: AppTextStyles.caption,
-                          prefixIcon: const Icon(LucideIcons.droplets, size: 20, color: AppColors.primaryGreen),
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                          prefixIcon: const Icon(
+                            LucideIcons.droplets,
+                            size: 20,
+                            color: AppColors.primaryGreen,
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: AppColors.primaryGreen, width: 2),
+                            borderSide: const BorderSide(
+                              color: AppColors.primaryGreen,
+                              width: 2,
+                            ),
                           ),
                         ),
-                        validator: (value) => value == null || value.trim().isEmpty ? 'Ingrese la dosis' : null,
+                        validator: (value) =>
+                            value == null || value.trim().isEmpty
+                            ? 'Ingrese la dosis'
+                            : null,
                       ),
                       const SizedBox(height: 14),
 
@@ -180,11 +229,20 @@ class _VeterinarioScreenState extends State<VeterinarioScreen> {
                         decoration: InputDecoration(
                           labelText: 'Observaciones / Notas',
                           labelStyle: AppTextStyles.caption,
-                          prefixIcon: const Icon(LucideIcons.clipboard, size: 20, color: AppColors.primaryGreen),
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                          prefixIcon: const Icon(
+                            LucideIcons.clipboard,
+                            size: 20,
+                            color: AppColors.primaryGreen,
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: AppColors.primaryGreen, width: 2),
+                            borderSide: const BorderSide(
+                              color: AppColors.primaryGreen,
+                              width: 2,
+                            ),
                           ),
                         ),
                       ),
@@ -208,10 +266,17 @@ class _VeterinarioScreenState extends State<VeterinarioScreen> {
                                 Navigator.pop(context);
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
-                                    content: Text('Vacuna registrada y estado actualizado', style: AppTextStyles.bodyBold.copyWith(color: Colors.white)),
+                                    content: Text(
+                                      'Vacuna registrada y estado actualizado',
+                                      style: AppTextStyles.bodyBold.copyWith(
+                                        color: Colors.white,
+                                      ),
+                                    ),
                                     backgroundColor: AppColors.primaryGreen,
                                     behavior: SnackBarBehavior.floating,
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
                                   ),
                                 );
                               }
@@ -219,11 +284,15 @@ class _VeterinarioScreenState extends State<VeterinarioScreen> {
                           },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppColors.primaryGreen,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
                           ),
                           child: Text(
                             'Guardar Vacuna',
-                            style: AppTextStyles.bodyBold.copyWith(color: Colors.white),
+                            style: AppTextStyles.bodyBold.copyWith(
+                              color: Colors.white,
+                            ),
                           ),
                         ),
                       ),
@@ -248,7 +317,9 @@ class _VeterinarioScreenState extends State<VeterinarioScreen> {
         if (provider.isLoading) {
           return Scaffold(
             appBar: AuraTopBar(role: role),
-            body: const Center(child: CircularProgressIndicator(color: AppColors.primaryGreen)),
+            body: const Center(
+              child: CircularProgressIndicator(color: AppColors.primaryGreen),
+            ),
           );
         }
 
@@ -258,7 +329,7 @@ class _VeterinarioScreenState extends State<VeterinarioScreen> {
 
         return Scaffold(
           appBar: AuraTopBar(role: role),
-          floatingActionButton: tab == 2
+          floatingActionButton: tab == 3
               ? FloatingActionButton.extended(
                   onPressed: () => _showAddVaccineDialog(context, provider),
                   backgroundColor: AppColors.primaryGreen,
@@ -288,7 +359,10 @@ class _VeterinarioScreenState extends State<VeterinarioScreen> {
                     return Padding(
                       padding: const EdgeInsets.only(right: 8),
                       child: ChoiceChip(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
                         labelPadding: EdgeInsets.zero,
                         label: showBadge
                             ? Row(
@@ -323,7 +397,9 @@ class _VeterinarioScreenState extends State<VeterinarioScreen> {
                         selectedColor: AppColors.primaryGreen,
                         backgroundColor: AppColors.surface,
                         labelStyle: AppTextStyles.caption.copyWith(
-                          color: selected ? Colors.white : AppColors.textPrimary,
+                          color: selected
+                              ? Colors.white
+                              : AppColors.textPrimary,
                           fontWeight: FontWeight.w600,
                         ),
                         shape: RoundedRectangleBorder(
@@ -348,7 +424,10 @@ class _VeterinarioScreenState extends State<VeterinarioScreen> {
                   Padding(
                     padding: const EdgeInsets.symmetric(vertical: 40),
                     child: Center(
-                      child: Text('No hay alertas sanitarias activas', style: AppTextStyles.body),
+                      child: Text(
+                        'No hay alertas sanitarias activas',
+                        style: AppTextStyles.body,
+                      ),
                     ),
                   )
                 else
@@ -360,10 +439,12 @@ class _VeterinarioScreenState extends State<VeterinarioScreen> {
                         onRegisterTreatment: () {
                           // Si es por vacuna vencida, llevar al tab de vacunas
                           if (a.title.toLowerCase().contains('vacuna')) {
-                            provider.setActiveVetTab(2);
+                            provider.setActiveVetTab(3);
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
-                                content: Text('Usa el botón "Registrar Vacuna" para inmunizar al animal'),
+                                content: Text(
+                                  'Usa el botón "Registrar Vacuna" para inmunizar al animal',
+                                ),
                                 behavior: SnackBarBehavior.floating,
                               ),
                             );
@@ -371,7 +452,9 @@ class _VeterinarioScreenState extends State<VeterinarioScreen> {
                             // Cualquier otro tratamiento
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
-                                content: Text('Tratamiento para ${a.animalName} registrado en historial clínico'),
+                                content: Text(
+                                  'Tratamiento para ${a.animalName} registrado en historial clínico',
+                                ),
                                 backgroundColor: AppColors.primaryGreen,
                                 behavior: SnackBarBehavior.floating,
                               ),
@@ -384,11 +467,60 @@ class _VeterinarioScreenState extends State<VeterinarioScreen> {
               ]
               // Vacunas
               else if (tab == 2) ...[
+                if (provider.clinicalCaseChats.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 40),
+                    child: Center(
+                      child: Text(
+                        'No hay chats clínicos asignados',
+                        style: AppTextStyles.body,
+                      ),
+                    ),
+                  )
+                else
+                  ...provider.clinicalCaseChats.map((chat) {
+                    final priority = chat['priority']?.toString() ?? 'green';
+                    final color = priority == 'urgent' || priority == 'red'
+                        ? AppColors.alertRed
+                        : priority == 'yellow'
+                        ? AppColors.alertOrange
+                        : AppColors.primaryGreen;
+                    final pending = provider.clinicalCaseMessages
+                        .where((m) => m['chat_id'] == chat['id'])
+                        .length;
+                    return Card(
+                      margin: const EdgeInsets.only(bottom: 10),
+                      child: ListTile(
+                        leading: CircleAvatar(
+                          backgroundColor: color.withValues(alpha: .12),
+                          child: Icon(LucideIcons.messagesSquare, color: color),
+                        ),
+                        title: Text(
+                          'Caso ${chat['case_id']}',
+                          style: AppTextStyles.bodyBold,
+                        ),
+                        subtitle: Text('${chat['status']} · $pending mensajes'),
+                        trailing: const Icon(LucideIcons.chevronRight),
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => ClinicalCaseChatScreen(chat: chat),
+                          ),
+                        ),
+                      ),
+                    );
+                  }),
+              ]
+              // Vacunas
+              else if (tab == 3) ...[
                 if (vaccines.isEmpty)
                   Padding(
                     padding: const EdgeInsets.symmetric(vertical: 40),
                     child: Center(
-                      child: Text('No hay vacunas registradas en la base de datos', style: AppTextStyles.body),
+                      child: Text(
+                        'No hay vacunas registradas en la base de datos',
+                        style: AppTextStyles.body,
+                      ),
                     ),
                   )
                 else
@@ -418,7 +550,11 @@ class _VeterinarioScreenState extends State<VeterinarioScreen> {
                                 color: AppColors.primaryGreen.withOpacity(0.08),
                                 borderRadius: BorderRadius.circular(12),
                               ),
-                              child: const Icon(LucideIcons.syringe, color: AppColors.primaryGreen, size: 22),
+                              child: const Icon(
+                                LucideIcons.syringe,
+                                color: AppColors.primaryGreen,
+                                size: 22,
+                              ),
                             ),
                             const SizedBox(width: 14),
                             Expanded(
@@ -429,23 +565,35 @@ class _VeterinarioScreenState extends State<VeterinarioScreen> {
                                   const SizedBox(height: 2),
                                   Text(
                                     'Aplicada a: $animalName ($animalTag)',
-                                    style: AppTextStyles.bodyBold.copyWith(fontSize: 12),
+                                    style: AppTextStyles.bodyBold.copyWith(
+                                      fontSize: 12,
+                                    ),
                                   ),
                                   if (notes.isNotEmpty) ...[
                                     const SizedBox(height: 4),
                                     Text(
                                       'Nota: $notes',
-                                      style: AppTextStyles.body.copyWith(fontSize: 12),
+                                      style: AppTextStyles.body.copyWith(
+                                        fontSize: 12,
+                                      ),
                                     ),
                                   ],
                                   const SizedBox(height: 8),
                                   Row(
                                     children: [
-                                      const Icon(LucideIcons.calendar, size: 12, color: AppColors.textSecondary),
+                                      const Icon(
+                                        LucideIcons.calendar,
+                                        size: 12,
+                                        color: AppColors.textSecondary,
+                                      ),
                                       const SizedBox(width: 4),
                                       Text(date, style: AppTextStyles.caption),
                                       const SizedBox(width: 16),
-                                      const Icon(LucideIcons.droplet, size: 12, color: AppColors.textSecondary),
+                                      const Icon(
+                                        LucideIcons.droplet,
+                                        size: 12,
+                                        color: AppColors.textSecondary,
+                                      ),
                                       const SizedBox(width: 4),
                                       Text(dose, style: AppTextStyles.caption),
                                     ],
@@ -458,6 +606,64 @@ class _VeterinarioScreenState extends State<VeterinarioScreen> {
                       ),
                     );
                   }),
+              ] else if (tab == 4) ...[
+                if (provider.vetFarmLinks.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 40),
+                    child: Center(
+                      child: Text(
+                        'No tienes invitaciones de fincas',
+                        style: AppTextStyles.body,
+                      ),
+                    ),
+                  )
+                else
+                  ...provider.vetFarmLinks.map(
+                    (link) => Card(
+                      child: ListTile(
+                        leading: const Icon(
+                          LucideIcons.house,
+                          color: AppColors.primaryGreen,
+                        ),
+                        title: Text(
+                          '${link['farm_id']}',
+                          style: AppTextStyles.bodyBold,
+                        ),
+                        subtitle: Text('Estado: ${link['status']}'),
+                        trailing: link['status'] == 'pending'
+                            ? Wrap(
+                                spacing: 4,
+                                children: [
+                                  IconButton(
+                                    tooltip: 'Rechazar',
+                                    onPressed: () =>
+                                        provider.updateVetFarmLinkStatus(
+                                          link['id'] as String,
+                                          'rejected',
+                                        ),
+                                    icon: const Icon(
+                                      LucideIcons.x,
+                                      color: AppColors.alertRed,
+                                    ),
+                                  ),
+                                  IconButton(
+                                    tooltip: 'Aceptar',
+                                    onPressed: () =>
+                                        provider.updateVetFarmLinkStatus(
+                                          link['id'] as String,
+                                          'accepted',
+                                        ),
+                                    icon: const Icon(
+                                      LucideIcons.check,
+                                      color: AppColors.primaryGreen,
+                                    ),
+                                  ),
+                                ],
+                              )
+                            : null,
+                      ),
+                    ),
+                  ),
               ]
               // Otros Tabs (Tratamientos, Fincas) - Placeholders
               else
@@ -485,10 +691,10 @@ class _AboveBottomNavFabLocation extends FloatingActionButtonLocation {
   Offset getOffset(ScaffoldPrelayoutGeometry scaffoldGeometry) {
     final double fabWidth = scaffoldGeometry.floatingActionButtonSize.width;
     final double fabHeight = scaffoldGeometry.floatingActionButtonSize.height;
-    
+
     final double contentWidth = scaffoldGeometry.scaffoldSize.width;
     final double contentHeight = scaffoldGeometry.scaffoldSize.height;
-    
+
     // Bottom nav sits 16px above bottom + height 72 + extra space 16 = 104px
     double x = contentWidth - fabWidth - 16;
     double y = contentHeight - fabHeight - 104;
