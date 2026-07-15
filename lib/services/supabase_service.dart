@@ -50,7 +50,7 @@ class SupabaseService {
 
         await Supabase.initialize(
           url: url,
-          anonKey: key,
+          publishableKey: key,
         );
         _initialized = true;
         debugPrint("Supabase initialized successfully on URL: $url");

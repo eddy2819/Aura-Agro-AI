@@ -9,9 +9,13 @@ import app_links
 import connectivity_plus
 import device_info_plus
 import file_selector_macos
+import flutter_local_notifications
 import package_info_plus
 import passkeys_darwin
+import printing
+import share_plus
 import shared_preferences_foundation
+import speech_to_text
 import sqflite_darwin
 import sqlite3_flutter_libs
 import ua_client_hints
@@ -22,9 +26,13 @@ func RegisterGeneratedPlugins(registry: FlutterPluginRegistry) {
   ConnectivityPlusPlugin.register(with: registry.registrar(forPlugin: "ConnectivityPlusPlugin"))
   DeviceInfoPlusMacosPlugin.register(with: registry.registrar(forPlugin: "DeviceInfoPlusMacosPlugin"))
   FileSelectorPlugin.register(with: registry.registrar(forPlugin: "FileSelectorPlugin"))
+  FlutterLocalNotificationsPlugin.register(with: registry.registrar(forPlugin: "FlutterLocalNotificationsPlugin"))
   FPPPackageInfoPlusPlugin.register(with: registry.registrar(forPlugin: "FPPPackageInfoPlusPlugin"))
   PasskeysPlugin.register(with: registry.registrar(forPlugin: "PasskeysPlugin"))
+  PrintingPlugin.register(with: registry.registrar(forPlugin: "PrintingPlugin"))
+  SharePlusMacosPlugin.register(with: registry.registrar(forPlugin: "SharePlusMacosPlugin"))
   SharedPreferencesPlugin.register(with: registry.registrar(forPlugin: "SharedPreferencesPlugin"))
+  SpeechToTextPlugin.register(with: registry.registrar(forPlugin: "SpeechToTextPlugin"))
   SqflitePlugin.register(with: registry.registrar(forPlugin: "SqflitePlugin"))
   Sqlite3FlutterLibsPlugin.register(with: registry.registrar(forPlugin: "Sqlite3FlutterLibsPlugin"))
   UAClientHintsPlugin.register(with: registry.registrar(forPlugin: "UAClientHintsPlugin"))

@@ -64,6 +64,11 @@ class Animal {
   final String? certSanitaryPath;
   final String? docPurchasePath;
 
+  // 9. QR de Trazabilidad AURA
+  final String? qrToken;
+  final bool qrIsActive;
+  final String? qrGeneratedAt;
+
   const Animal({
     required this.id,
     required this.name,
@@ -112,6 +117,9 @@ class Animal {
     this.imageSidePath,
     this.certSanitaryPath,
     this.docPurchasePath,
+    this.qrToken,
+    this.qrIsActive = true,
+    this.qrGeneratedAt,
   });
 
   Animal copyWith({
@@ -162,6 +170,9 @@ class Animal {
     String? imageSidePath,
     String? certSanitaryPath,
     String? docPurchasePath,
+    String? qrToken,
+    bool? qrIsActive,
+    String? qrGeneratedAt,
   }) {
     return Animal(
       id: id ?? this.id,
@@ -211,6 +222,9 @@ class Animal {
       imageSidePath: imageSidePath ?? this.imageSidePath,
       certSanitaryPath: certSanitaryPath ?? this.certSanitaryPath,
       docPurchasePath: docPurchasePath ?? this.docPurchasePath,
+      qrToken: qrToken ?? this.qrToken,
+      qrIsActive: qrIsActive ?? this.qrIsActive,
+      qrGeneratedAt: qrGeneratedAt ?? this.qrGeneratedAt,
     );
   }
 }

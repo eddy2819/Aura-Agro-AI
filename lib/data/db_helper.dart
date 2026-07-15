@@ -52,7 +52,7 @@ class DBHelper {
 
     return await openDatabase(
       path,
-      version: 10,
+      version: 11,
       onConfigure: (db) async {
         await db.execute('PRAGMA foreign_keys = ON');
       },
@@ -166,7 +166,10 @@ class DBHelper {
         image_front_path TEXT,
         image_side_path TEXT,
         cert_sanitary_path TEXT,
-        doc_purchase_path TEXT
+        doc_purchase_path TEXT,
+        qr_token TEXT,
+        qr_is_active INTEGER DEFAULT 1,
+        qr_generated_at TEXT
       )
     ''');
 
@@ -183,20 +186,8 @@ class DBHelper {
       )
     ''');
 
-    // Tabla de alertas
-    await db.execute('''
-      CREATE TABLE alerts (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        animal_name TEXT NOT NULL,
-        animal_tag TEXT NOT NULL,
-        farm TEXT,
-        detected_ago TEXT NOT NULL,
-        title TEXT NOT NULL,
-        risk_score INTEGER,
-        symptoms TEXT, -- Almacenado como texto separado por comas
-        ai_recommendation TEXT
-      )
-    ''');
+    // Tablas MVP y de alertas (versión 11)
+    await _createMvpTables(db);
 
     await _createNutritionTables(db);
     await _createMarketplaceTable(db);
@@ -417,34 +408,40 @@ class DBHelper {
     // 4. Alertas iniciales
     final initialAlerts = [
       {
-        'animal_name': 'Vaca #0234 - Estrella',
-        'animal_tag': '#0234',
-        'farm': 'Finca El Paraiso',
-        'detected_ago': 'Hace 2 horas',
+        'id': 'mock_alert_1',
+        'animal_id': '0234',
+        'type': 'health',
+        'risk_level': 'rojo',
         'title': 'Riesgo de Mastitis',
-        'risk_score': 94,
-        'symptoms': 'Leche con grumos,Ubre inflamada,Fiebre leve',
-        'ai_recommendation': 'Tratamiento antibiotico recomendado. Separar del hato.',
+        'description': 'Leche con grumos,Ubre inflamada,Fiebre leve : Tratamiento antibiotico recomendado. Separar del hato.',
+        'source': 'Finca El Paraiso',
+        'created_at': DateTime.now().subtract(const Duration(hours: 2)).toIso8601String(),
+        'is_read': 0,
+        'synced': 0,
       },
       {
-        'animal_name': 'Toro #0089 - Tormenta',
-        'animal_tag': '#0089',
-        'farm': 'Finca El Paraiso',
-        'detected_ago': 'Hace 1 dia',
+        'id': 'mock_alert_2',
+        'animal_id': '0089',
+        'type': 'health',
+        'risk_level': 'rojo',
         'title': 'Vacuna Vencida - Fiebre Aftosa',
-        'risk_score': 100,
-        'symptoms': 'Esquema de vacunacion incompleto',
-        'ai_recommendation': 'Programar vacunacion inmediata.',
+        'description': 'Esquema de vacunacion incompleto : Programar vacunacion inmediata.',
+        'source': 'Finca El Paraiso',
+        'created_at': DateTime.now().subtract(const Duration(days: 1)).toIso8601String(),
+        'is_read': 0,
+        'synced': 0,
       },
       {
-        'animal_name': 'Ternero #0456 - Manchita',
-        'animal_tag': '#0456',
-        'farm': 'Finca La Esperanza',
-        'detected_ago': 'Hace 3 dias',
+        'id': 'mock_alert_3',
+        'animal_id': '0456',
+        'type': 'nutrition',
+        'risk_level': 'amarillo',
         'title': 'Bajo peso para edad',
-        'risk_score': 89,
-        'symptoms': 'Peso 15% bajo promedio,Apetito reducido',
-        'ai_recommendation': 'Revisar dieta y desparasitar.',
+        'description': 'Peso 15% bajo promedio,Apetito reducido : Revisar dieta y desparasitar.',
+        'source': 'Finca La Esperanza',
+        'created_at': DateTime.now().subtract(const Duration(days: 3)).toIso8601String(),
+        'is_read': 0,
+        'synced': 0,
       },
     ];
 
@@ -537,6 +534,9 @@ class DBHelper {
         imageSidePath: json['image_side_path'] as String?,
         certSanitaryPath: json['cert_sanitary_path'] as String?,
         docPurchasePath: json['doc_purchase_path'] as String?,
+        qrToken: json['qr_token'] as String?,
+        qrIsActive: (json['qr_is_active'] as int? ?? 1) == 1,
+        qrGeneratedAt: json['qr_generated_at'] as String?,
       );
     }).toList();
   }
@@ -591,6 +591,9 @@ class DBHelper {
       'image_side_path': animal.imageSidePath,
       'cert_sanitary_path': animal.certSanitaryPath,
       'doc_purchase_path': animal.docPurchasePath,
+      'qr_token': animal.qrToken,
+      'qr_is_active': animal.qrIsActive ? 1 : 0,
+      'qr_generated_at': animal.qrGeneratedAt,
     };
     final count = await db.insert('animals', map);
     await _enqueueSync('animals', animal.id, 'INSERT', map);
@@ -674,34 +677,47 @@ class DBHelper {
   // Métodos CRUD para Alertas
   Future<List<AlertModel>> getAllAlerts() async {
     final db = await instance.database;
-    final result = await db.query('alerts');
+    final result = await db.query('alerts', orderBy: 'created_at DESC');
 
-    return result.map((json) {
-      final symptomsStr = json['symptoms'] as String?;
-      final symptomsList = symptomsStr != null && symptomsStr.isNotEmpty
-          ? symptomsStr.split(',')
-          : <String>[];
+    final List<AlertModel> list = [];
+    for (var json in result) {
+      final animalId = json['animal_id'] as String?;
+      String animalName = "Hato General";
+      String animalTag = "General";
+      if (animalId != null && animalId.isNotEmpty) {
+        final anims = await db.query('animals', columns: ['name', 'tag'], where: 'id = ?', whereArgs: [animalId]);
+        if (anims.isNotEmpty) {
+          animalName = anims.first['name'] as String;
+          animalTag = anims.first['tag'] as String;
+        }
+      }
+      list.add(AlertModel.fromMap(json, animalName: animalName, animalTag: animalTag));
+    }
+    return list;
+  }
 
-      return AlertModel(
-        animalName: json['animal_name'] as String,
-        animalTag: json['animal_tag'] as String,
-        farm: json['farm'] as String?,
-        detectedAgo: json['detected_ago'] as String,
-        title: json['title'] as String,
-        riskScore: json['risk_score'] as int?,
-        symptoms: symptomsList,
-        aiRecommendation: json['ai_recommendation'] as String?,
-      );
-    }).toList();
+  Future<int> deleteAlert(String id) async {
+    final db = await instance.database;
+    final count = await db.delete(
+      'alerts',
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+    await _enqueueSync('alerts', id, 'DELETE', null);
+    return count;
   }
 
   Future<int> deleteAlertByTag(String tag, String titlePart) async {
     final db = await instance.database;
-    final alerts = await db.query('alerts', columns: ['id'], where: 'animal_tag = ? AND title LIKE ?', whereArgs: [tag, '%$titlePart%']);
+    final anims = await db.query('animals', columns: ['id'], where: 'tag = ?', whereArgs: [tag]);
+    if (anims.isEmpty) return 0;
+    final animalId = anims.first['id'] as String;
+
+    final alerts = await db.query('alerts', columns: ['id'], where: 'animal_id = ? AND title LIKE ?', whereArgs: [animalId, '%$titlePart%']);
     final count = await db.delete(
       'alerts',
-      where: 'animal_tag = ? AND title LIKE ?',
-      whereArgs: [tag, '%$titlePart%'],
+      where: 'animal_id = ? AND title LIKE ?',
+      whereArgs: [animalId, '%$titlePart%'],
     );
     for (var a in alerts) {
       final localId = a['id'].toString();
@@ -712,19 +728,23 @@ class DBHelper {
 
   Future<int> insertAlert(AlertModel alert) async {
     final db = await instance.database;
-    final map = {
-      'animal_name': alert.animalName,
-      'animal_tag': alert.animalTag,
-      'farm': alert.farm,
-      'detected_ago': alert.detectedAgo,
-      'title': alert.title,
-      'risk_score': alert.riskScore,
-      'symptoms': alert.symptoms.join(','),
-      'ai_recommendation': alert.aiRecommendation,
-    };
-    final id = await db.insert('alerts', map);
-    await _enqueueSync('alerts', id.toString(), 'INSERT', {...map, 'id': id});
-    return id;
+    final map = alert.toMap();
+    final count = await db.insert('alerts', map, conflictAlgorithm: ConflictAlgorithm.replace);
+    await _enqueueSync('alerts', alert.id, 'INSERT', map);
+    return count;
+  }
+
+  Future<int> markAlertAsRead(String id) async {
+    final db = await instance.database;
+    final map = {'is_read': 1};
+    final count = await db.update(
+      'alerts',
+      map,
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+    await _enqueueSync('alerts', id, 'UPDATE', map);
+    return count;
   }
 
   // --- MIGRATION AND NUTRITION TABLES ---
@@ -876,6 +896,22 @@ class DBHelper {
         debugPrint("Upgrade error version 10: $e");
       }
     }
+    if (oldVersion < 11) {
+      try {
+        await _createMvpTables(db);
+        try {
+          await db.execute('ALTER TABLE animals ADD COLUMN qr_token TEXT');
+        } catch (_) {}
+        try {
+          await db.execute('ALTER TABLE animals ADD COLUMN qr_is_active INTEGER DEFAULT 1');
+        } catch (_) {}
+        try {
+          await db.execute('ALTER TABLE animals ADD COLUMN qr_generated_at TEXT');
+        } catch (_) {}
+      } catch (e) {
+        debugPrint("Upgrade error version 11: $e");
+      }
+    }
   }
 
   Future<int> updateAnimal(Animal animal) async {
@@ -927,6 +963,9 @@ class DBHelper {
       'image_side_path': animal.imageSidePath,
       'cert_sanitary_path': animal.certSanitaryPath,
       'doc_purchase_path': animal.docPurchasePath,
+      'qr_token': animal.qrToken,
+      'qr_is_active': animal.qrIsActive ? 1 : 0,
+      'qr_generated_at': animal.qrGeneratedAt,
     };
     final count = await db.update(
       'animals',
@@ -1574,5 +1613,228 @@ class DBHelper {
     );
     await _enqueueSync('marketplace_items', id.toString(), 'DELETE', null);
     return count;
+  }
+
+  // --- MÉTODOS DE TABLAS MVP (VERSION 11) ---
+
+  Future<void> _createMvpTables(Database db) async {
+    await db.execute('DROP TABLE IF EXISTS alerts');
+    await db.execute('''
+      CREATE TABLE alerts (
+        id TEXT PRIMARY KEY,
+        animal_id TEXT,
+        type TEXT,
+        risk_level TEXT,
+        title TEXT,
+        description TEXT,
+        source TEXT,
+        created_at TEXT,
+        is_read INTEGER DEFAULT 0,
+        synced INTEGER DEFAULT 0
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE sos_cases (
+        id TEXT PRIMARY KEY,
+        animal_id TEXT,
+        symptoms_text TEXT,
+        selected_symptoms TEXT,
+        risk_level TEXT,
+        title TEXT,
+        explanation TEXT,
+        safe_actions TEXT,
+        notify_vet INTEGER,
+        created_at TEXT,
+        synced INTEGER DEFAULT 0
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE animal_exits (
+        id TEXT PRIMARY KEY,
+        animal_id TEXT,
+        exit_type TEXT,
+        exit_date TEXT,
+        reason TEXT,
+        sale_price REAL,
+        buyer TEXT,
+        observations TEXT,
+        created_at TEXT,
+        synced INTEGER DEFAULT 0
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE medicine_inventory (
+        id TEXT PRIMARY KEY,
+        name TEXT,
+        type TEXT,
+        quantity REAL,
+        unit TEXT,
+        min_stock REAL,
+        expiration_date TEXT,
+        provider TEXT,
+        created_at TEXT,
+        synced INTEGER DEFAULT 0
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE medical_treatments (
+        id TEXT PRIMARY KEY,
+        animal_id TEXT,
+        diagnosis TEXT,
+        symptoms TEXT,
+        treatment TEXT,
+        medicine_id TEXT,
+        dose REAL,
+        responsible TEXT,
+        date TEXT,
+        observations TEXT,
+        created_at TEXT,
+        synced INTEGER DEFAULT 0
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE reproduction_records (
+        id TEXT PRIMARY KEY,
+        animal_id TEXT,
+        event_type TEXT,
+        event_date TEXT,
+        notes TEXT,
+        expected_birth_date TEXT,
+        created_at TEXT,
+        synced INTEGER DEFAULT 0
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE operating_expenses (
+        id TEXT PRIMARY KEY,
+        category TEXT,
+        amount REAL,
+        date TEXT,
+        description TEXT,
+        animal_id TEXT,
+        farm_id TEXT,
+        created_at TEXT,
+        synced INTEGER DEFAULT 0
+      )
+    ''');
+  }
+
+  // SOS Cases
+  Future<int> insertSosCase(Map<String, dynamic> row) async {
+    final db = await instance.database;
+    final count = await db.insert('sos_cases', row, conflictAlgorithm: ConflictAlgorithm.replace);
+    await _enqueueSync('sos_cases', row['id'] as String, 'INSERT', row);
+    return count;
+  }
+
+  Future<List<Map<String, dynamic>>> getAllSosCases() async {
+    final db = await instance.database;
+    return await db.query('sos_cases', orderBy: 'created_at DESC');
+  }
+
+  // Animal Exits
+  Future<int> insertAnimalExit(Map<String, dynamic> row) async {
+    final db = await instance.database;
+    final count = await db.insert('animal_exits', row, conflictAlgorithm: ConflictAlgorithm.replace);
+    await _enqueueSync('animal_exits', row['id'] as String, 'INSERT', row);
+    return count;
+  }
+
+  Future<List<Map<String, dynamic>>> getAllAnimalExits() async {
+    final db = await instance.database;
+    return await db.query('animal_exits', orderBy: 'exit_date DESC');
+  }
+
+  // Medicine Inventory
+  Future<int> insertMedicine(Map<String, dynamic> row) async {
+    final db = await instance.database;
+    final count = await db.insert('medicine_inventory', row, conflictAlgorithm: ConflictAlgorithm.replace);
+    await _enqueueSync('medicine_inventory', row['id'] as String, 'INSERT', row);
+    return count;
+  }
+
+  Future<int> updateMedicine(Map<String, dynamic> row) async {
+    final db = await instance.database;
+    final count = await db.update(
+      'medicine_inventory',
+      row,
+      where: 'id = ?',
+      whereArgs: [row['id']],
+    );
+    await _enqueueSync('medicine_inventory', row['id'] as String, 'UPDATE', row);
+    return count;
+  }
+
+  Future<int> updateMedicineStock(String id, double quantity) async {
+    final db = await instance.database;
+    final map = {'quantity': quantity};
+    final count = await db.update(
+      'medicine_inventory',
+      map,
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+    await _enqueueSync('medicine_inventory', id, 'UPDATE', map);
+    return count;
+  }
+
+  Future<List<Map<String, dynamic>>> getAllMedicines() async {
+    final db = await instance.database;
+    return await db.query('medicine_inventory', orderBy: 'name ASC');
+  }
+
+  // Medical Treatments
+  Future<int> insertMedicalTreatment(Map<String, dynamic> row) async {
+    final db = await instance.database;
+    final count = await db.insert('medical_treatments', row, conflictAlgorithm: ConflictAlgorithm.replace);
+    await _enqueueSync('medical_treatments', row['id'] as String, 'INSERT', row);
+    return count;
+  }
+
+  Future<List<Map<String, dynamic>>> getAllMedicalTreatments() async {
+    final db = await instance.database;
+    return await db.query('medical_treatments', orderBy: 'date DESC');
+  }
+
+  // Reproduction Records
+  Future<int> insertReproductionRecord(Map<String, dynamic> row) async {
+    final db = await instance.database;
+    final count = await db.insert('reproduction_records', row, conflictAlgorithm: ConflictAlgorithm.replace);
+    await _enqueueSync('reproduction_records', row['id'] as String, 'INSERT', row);
+    return count;
+  }
+
+  Future<List<Map<String, dynamic>>> getAllReproductionRecords() async {
+    final db = await instance.database;
+    return await db.query('reproduction_records', orderBy: 'event_date DESC');
+  }
+
+  Future<List<Map<String, dynamic>>> getReproductionRecordsForAnimal(String animalId) async {
+    final db = await instance.database;
+    return await db.query(
+      'reproduction_records',
+      where: 'animal_id = ?',
+      whereArgs: [animalId],
+      orderBy: 'event_date DESC',
+    );
+  }
+
+  // Operating Expenses
+  Future<int> insertOperatingExpense(Map<String, dynamic> row) async {
+    final db = await instance.database;
+    final count = await db.insert('operating_expenses', row, conflictAlgorithm: ConflictAlgorithm.replace);
+    await _enqueueSync('operating_expenses', row['id'] as String, 'INSERT', row);
+    return count;
+  }
+
+  Future<List<Map<String, dynamic>>> getAllOperatingExpenses() async {
+    final db = await instance.database;
+    return await db.query('operating_expenses', orderBy: 'date DESC');
   }
 }

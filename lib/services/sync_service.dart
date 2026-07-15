@@ -162,11 +162,18 @@ class SyncService {
             payload.remove('id');
             await _supabaseService.client.from('user_profiles').upsert(payload);
           }
-        } else if (tableName == 'animals') {
-          // Tabla con ID tipo TEXT
+        } else if (tableName == 'animals' ||
+                   tableName == 'alerts' ||
+                   tableName == 'sos_cases' ||
+                   tableName == 'animal_exits' ||
+                   tableName == 'medicine_inventory' ||
+                   tableName == 'medical_treatments' ||
+                   tableName == 'reproduction_records' ||
+                   tableName == 'operating_expenses') {
+          // Tablas con ID tipo TEXT (UUID)
           if (action == 'DELETE') {
             await _supabaseService.client
-                .from('animals')
+                .from(tableName)
                 .delete()
                 .match({'user_id': targetUserId, 'id': recordId});
           } else if (localData != null) {
@@ -176,13 +183,22 @@ class SyncService {
               'updated_at': DateTime.now().toIso8601String(),
             };
             // Convertir booleanos a correspondientes para Postgres
-            payload['grazing'] = payload['grazing'] == 1 || payload['grazing'] == true;
-            payload['balanced_feed'] = payload['balanced_feed'] == 1 || payload['balanced_feed'] == true;
-            payload['supplements'] = payload['supplements'] == 1 || payload['supplements'] == true;
-            payload['has_alert'] = payload['has_alert'] == 1 || payload['has_alert'] == true;
-            payload['available_for_sale'] = payload['available_for_sale'] == 1 || payload['available_for_sale'] == true;
+            if (tableName == 'animals') {
+              payload['grazing'] = payload['grazing'] == 1 || payload['grazing'] == true;
+              payload['balanced_feed'] = payload['balanced_feed'] == 1 || payload['balanced_feed'] == true;
+              payload['supplements'] = payload['supplements'] == 1 || payload['supplements'] == true;
+              payload['has_alert'] = payload['has_alert'] == 1 || payload['has_alert'] == true;
+              payload['available_for_sale'] = payload['available_for_sale'] == 1 || payload['available_for_sale'] == true;
+              payload['qr_is_active'] = payload['qr_is_active'] == 1 || payload['qr_is_active'] == true;
+              } else if (tableName == 'alerts') {
+    // Remove unsupported column if present
+    payload.remove('animal_id');
+    payload['is_read'] = payload['is_read'] == 1 || payload['is_read'] == true;
+            } else if (tableName == 'sos_cases') {
+              payload['notify_vet'] = payload['notify_vet'] == 1 || payload['notify_vet'] == true;
+            }
             
-            await _supabaseService.client.from('animals').upsert(payload);
+            await _supabaseService.client.from(tableName).upsert(payload);
           }
         } else {
           // Tablas con IDs incrementales locales mapeados a local_id
@@ -208,7 +224,9 @@ class SyncService {
               payload['historial_completo'] = payload['historial_completo'] == 1 || payload['historial_completo'] == true;
               payload['fotos_calidad'] = payload['fotos_calidad'] == 1 || payload['fotos_calidad'] == true;
             }
-            await _supabaseService.client.from(tableName).upsert(payload);
+            await _supabaseService.client
+                .from(tableName)
+                .upsert(payload, onConflict: 'user_id, local_id');
           }
         }
 
@@ -247,7 +265,7 @@ class SyncService {
           .maybeSingle();
 
       if (remoteProfileResponse != null && !isPending('user_profiles', 'id', '1')) {
-        final profileMap = remoteProfileResponse as Map<String, dynamic>;
+        final profileMap = remoteProfileResponse;
         role = profileMap['role'] ?? 'Ganadero';
         
         await db.insert('user_profile', {
@@ -304,106 +322,102 @@ class SyncService {
       debugPrint("Error al sincronizar autorizaciones de finca: $e");
     }
 
-    // 3. Sincronizar ANIMALES
-    try {
-      final List<dynamic> animalsList;
-      if (role == 'Veterinario') {
-        if (authorizedGanaderoIds.isEmpty) {
-          await db.delete('animals');
-          animalsList = [];
+    // 3. Sincronizar tablas con ID TEXT (UUID)
+    final textIdTables = [
+      'animals',
+      'alerts',
+      'sos_cases',
+      'animal_exits',
+      'medicine_inventory',
+      'medical_treatments',
+      'reproduction_records',
+      'operating_expenses'
+    ];
+
+    for (var tableName in textIdTables) {
+      try {
+        final List<dynamic> rowsList;
+        if (role == 'Veterinario' && tableName != 'animals') {
+          if (authorizedGanaderoIds.isEmpty) {
+            await db.delete(tableName);
+            rowsList = [];
+          } else {
+            final response = await _supabaseService.client
+                .from(tableName)
+                .select()
+                .inFilter('user_id', authorizedGanaderoIds);
+            rowsList = response as List<dynamic>;
+          }
         } else {
           final response = await _supabaseService.client
-              .from('animals')
+              .from(tableName)
               .select()
-              .inFilter('user_id', authorizedGanaderoIds);
-          animalsList = response as List<dynamic>;
+              .eq('user_id', userId);
+          rowsList = response as List<dynamic>;
         }
-      } else {
-        final response = await _supabaseService.client
-            .from('animals')
-            .select()
-            .eq('user_id', userId);
-        animalsList = response as List<dynamic>;
-      }
 
-      final List<String> remoteIds = [];
+        final List<String> remoteIds = [];
 
-      for (var row in animalsList) {
-        final map = row as Map<String, dynamic>;
-        final id = map['id'] as String;
-        remoteIds.add(id);
+        for (var row in rowsList) {
+          final map = row as Map<String, dynamic>;
+          final id = map['id'] as String;
+          remoteIds.add(id);
 
-        if (!isPending('animals', 'id', id)) {
-          // Adaptar tipos (Postgres booleans/decimals a SQLite ints/reals)
-          final localMap = {
-            'id': map['id'],
-            'name': map['name'],
-            'tag': map['tag'],
-            'category': map['category'],
-            'score': map['score'],
-            'description': map['description'],
-            'weight_kg': (map['weight_kg'] as num).toDouble(),
-            'production_liters': map['production_liters'],
-            'vaccine_status': map['vaccine_status'],
-            'has_alert': map['has_alert'] == true ? 1 : 0,
-            'image_path': map['image_path'],
-            'breed': map['breed'],
-            'sex': map['sex'],
-            'birth_date': map['birth_date'],
-            'status': map['status'],
-            'purpose': map['purpose'],
-            'stage': map['stage'],
-            'body_condition': map['body_condition'] != null ? (map['body_condition'] as num).toDouble() : null,
-            'color': map['color'],
-            'genetic_father': map['genetic_father'],
-            'genetic_mother': map['genetic_mother'],
-            'genetic_line': map['genetic_line'],
-            'origin': map['origin'],
-            'health_status': map['health_status'],
-            'last_vet_check': map['last_vet_check'],
-            'vet_responsible': map['vet_responsible'],
-            'prev_diseases': map['prev_diseases'],
-            'allergies': map['allergies'],
-            'current_medication': map['current_medication'],
-            'diet_type': map['diet_type'],
-            'grazing': map['grazing'] == true ? 1 : 0,
-            'balanced_feed': map['balanced_feed'] == true ? 1 : 0,
-            'supplements': map['supplements'] == true ? 1 : 0,
-            'daily_consumption': map['daily_consumption'] != null ? (map['daily_consumption'] as num).toDouble() : null,
-            'production_objective': map['production_objective'],
-            'finca': map['finca'],
-            'lote': map['lote'],
-            'potrero': map['potrero'],
-            'gps_coords': map['gps_coords'],
-            'purchase_value': map['purchase_value'] != null ? (map['purchase_value'] as num).toDouble() : null,
-            'purchase_date': map['purchase_date'],
-            'provider': map['provider'],
-            'available_for_sale': map['available_for_sale'] == true ? 1 : 0,
-            'image_front_path': map['image_front_path'],
-            'image_side_path': map['image_side_path'],
-            'cert_sanitary_path': map['cert_sanitary_path'],
-            'doc_purchase_path': map['doc_purchase_path'],
-          };
-          await db.insert('animals', localMap, conflictAlgorithm: ConflictAlgorithm.replace);
+          if (!isPending(tableName, 'id', id)) {
+            final localMap = {
+              ...map,
+            };
+            localMap.remove('user_id');
+            localMap.remove('updated_at');
+            if (tableName == 'animals' || tableName == 'alerts') {
+              localMap.remove('created_at');
+            }
+
+            // Adaptar Postgres booleans / decimals a SQLite ints / reals
+            if (tableName == 'animals') {
+              localMap['grazing'] = map['grazing'] == true ? 1 : 0;
+              localMap['balanced_feed'] = map['balanced_feed'] == true ? 1 : 0;
+              localMap['supplements'] = map['supplements'] == true ? 1 : 0;
+              localMap['has_alert'] = map['has_alert'] == true ? 1 : 0;
+              localMap['available_for_sale'] = map['available_for_sale'] == true ? 1 : 0;
+              localMap['weight_kg'] = map['weight_kg'] != null ? (map['weight_kg'] as num).toDouble() : 0.0;
+              localMap['body_condition'] = map['body_condition'] != null ? (map['body_condition'] as num).toDouble() : null;
+              localMap['purchase_value'] = map['purchase_value'] != null ? (map['purchase_value'] as num).toDouble() : null;
+              localMap['daily_consumption'] = map['daily_consumption'] != null ? (map['daily_consumption'] as num).toDouble() : null;
+              localMap['qr_is_active'] = map['qr_is_active'] == true ? 1 : 0;
+            } else if (tableName == 'alerts') {
+              localMap['is_read'] = map['is_read'] == true ? 1 : 0;
+            } else if (tableName == 'sos_cases') {
+              localMap['notify_vet'] = map['notify_vet'] == true ? 1 : 0;
+            } else if (tableName == 'medicine_inventory') {
+              localMap['quantity'] = map['quantity'] != null ? (map['quantity'] as num).toDouble() : 0.0;
+              localMap['min_stock'] = map['min_stock'] != null ? (map['min_stock'] as num).toDouble() : 5.0;
+            } else if (tableName == 'medical_treatments') {
+              localMap['dose'] = map['dose'] != null ? (map['dose'] as num).toDouble() : 0.0;
+            } else if (tableName == 'operating_expenses') {
+              localMap['amount'] = map['amount'] != null ? (map['amount'] as num).toDouble() : 0.0;
+            }
+
+            await db.insert(tableName, localMap, conflictAlgorithm: ConflictAlgorithm.replace);
+          }
         }
-      }
 
-      // Borrar localmente animales que fueron eliminados en remoto (y no están en cola de subida)
-      final localAnimals = await db.query('animals', columns: ['id']);
-      for (var la in localAnimals) {
-        final id = la['id'] as String;
-        if (!remoteIds.contains(id) && !isPending('animals', 'id', id)) {
-          await db.delete('animals', where: 'id = ?', whereArgs: [id]);
+        // Borrar localmente los registros eliminados en remoto
+        final localRows = await db.query(tableName, columns: ['id']);
+        for (var lr in localRows) {
+          final id = lr['id'] as String;
+          if (!remoteIds.contains(id) && !isPending(tableName, 'id', id)) {
+            await db.delete(tableName, where: 'id = ?', whereArgs: [id]);
+          }
         }
+      } catch (e) {
+        debugPrint("Error haciendo pull de la tabla $tableName: $e");
       }
-    } catch (e) {
-      debugPrint("Error haciendo pull de animales: $e");
     }
 
     // 4. Sincronizar el resto de tablas con ID autoincremental mapeados a local_id
     final tablesToSync = [
       'vaccines',
-      'alerts',
       'nutrition_resources',
       'nutrition_plans',
       'weight_records',
@@ -448,7 +462,12 @@ class SyncService {
             };
             localMap.remove('user_id');
             localMap.remove('local_id');
-            localMap.remove('updated_at'); // si existe en postgres
+            if (tableName != 'nutrition_resources') {
+              localMap.remove('updated_at'); // si existe en postgres
+            }
+            if (tableName != 'nutrition_plans') {
+              localMap.remove('created_at'); // si existe en postgres
+            }
 
             // Ajustar booleanos / numéricos según la tabla
             if (tableName == 'alerts') {

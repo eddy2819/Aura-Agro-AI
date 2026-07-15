@@ -10,8 +10,6 @@ import '../models/animal.dart';
 import '../services/supabase_service.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_text_styles.dart';
-import '../widgets/navigation/top_app_bar.dart';
-import '../widgets/nutricion/resource_input_card.dart';
 import 'premium_result_screen.dart';
 import 'plan_detail_screen.dart';
 
@@ -32,13 +30,11 @@ class _NutricionScreenState extends State<NutricionScreen> with TickerProviderSt
   String _objectiveType = 'todo'; // 'todo', 'categoria', 'individual'
   String _selectedCategory = 'Vaca Lechera';
   String? _selectedAnimalId;
-  String _selectedCategoryTile = 'Pastos';
 
   // Group selection filters
   String? _filterFinca;
   String? _filterLote;
   String? _filterPotrero;
-  List<String> _selectedGroupAnimalIds = [];
 
   // Temporary list of resources before confirmation
   List<NutritionResource> _tempResources = [];
@@ -1797,217 +1793,6 @@ class _NutricionScreenState extends State<NutricionScreen> with TickerProviderSt
     );
   }
 
-  IconData _getResourceIcon(String type) {
-    switch (type) {
-      case 'pasto':
-        return Icons.grass_rounded;
-      case 'silo':
-        return Icons.agriculture_rounded;
-      case 'concentrado':
-        return Icons.inventory_2_rounded;
-      case 'suplemento':
-      default:
-        return Icons.science_rounded;
-    }
-  }
-
-  Widget _buildFrequentResourcesList() {
-    final frequent = {
-      'Pastos': ['Kikuyo', 'Ryegrass', 'Brachiaria', 'Alfalfa', 'Pasto de corte'],
-      'Forrajes / Silos': ['Silo de Maíz', 'Silo de pasto', 'Heno', 'Ensilaje'],
-      'Concentrados': ['Balanceado lechero', 'Maíz molido', 'Afrecho', 'Torta de soya'],
-      'Suplementos / Sales': ['Melaza', 'Sales minerales', 'Bloque nutricional', 'Probióticos']
-    };
-
-    return SizedBox(
-      height: 95,
-      child: ListView(
-        scrollDirection: Axis.horizontal,
-        children: frequent.entries.map((entry) {
-          final category = entry.key;
-          final list = entry.value;
-
-          return Container(
-            margin: const EdgeInsets.only(right: 12),
-            padding: const EdgeInsets.all(12),
-            width: 220,
-            decoration: BoxDecoration(
-              color: AppColors.sandBeige,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppColors.border),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(category, style: AppTextStyles.caption.copyWith(fontWeight: FontWeight.bold, color: AppColors.primaryGreenDark)),
-                const SizedBox(height: 6),
-                Expanded(
-                  child: ListView(
-                    scrollDirection: Axis.horizontal,
-                    children: list.map((item) {
-                      return Padding(
-                        padding: const EdgeInsets.only(right: 6),
-                        child: ActionChip(
-                          label: Text(item, style: const TextStyle(fontSize: 10)),
-                          padding: EdgeInsets.zero,
-                          onPressed: () {
-                            setState(() {
-                              String type = 'pasto';
-                              String unit = 'kg';
-                              if (category.contains('Silo')) {
-                                type = 'silo';
-                                unit = 'ton';
-                              } else if (category.contains('Concentrados')) {
-                                type = 'concentrado';
-                                unit = 'kg';
-                              } else if (category.contains('Suplementos')) {
-                                type = 'suplemento';
-                                unit = 'kg';
-                              } else {
-                                type = 'pasto';
-                                unit = 'ha';
-                              }
-
-                              _tempResources.add(NutritionResource(
-                                type: type,
-                                name: item,
-                                amount: 10,
-                                unit: unit,
-                                availability: 'Disponible',
-                                updatedAt: DateTime.now().toIso8601String(),
-                              ));
-                            });
-                          },
-                        ),
-                      );
-                    }).toList(),
-                  ),
-                ),
-              ],
-            ),
-          );
-        }).toList(),
-      ),
-    );
-  }
-
-  Widget _buildStep3Foto(DataProvider provider) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text('3. Evaluación Visual del Animal', style: AppTextStyles.h2),
-        const SizedBox(height: 8),
-        Text('Captura una fotografía lateral completa para estimar condición corporal:', style: AppTextStyles.body),
-        const SizedBox(height: 16),
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: AppColors.sandBeige,
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: AppColors.border),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Guía para una correcta captura:', style: AppTextStyles.bodyBold),
-              const SizedBox(height: 8),
-              _guideBullet("Animal de pie sobre terreno plano."),
-              _guideBullet("Perfil lateral completo del cuerpo."),
-              _guideBullet("Buena iluminación ambiental (sin contraluz)."),
-              _guideBullet("Sin obstáculos visuales (maleza u otros animales)."),
-            ],
-          ),
-        ),
-        const SizedBox(height: 20),
-
-        if (_selectedPhotoPath != null) ...[
-          Container(
-            height: 180,
-            width: double.infinity,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(18),
-              image: DecorationImage(
-                image: FileImage(File(_selectedPhotoPath!)),
-                fit: BoxFit.cover,
-              ),
-            ),
-            alignment: Alignment.center,
-            child: _isUploadingPhoto
-                ? Container(
-                    padding: const EdgeInsets.all(12),
-                    color: Colors.black45,
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const CircularProgressIndicator(color: Colors.white),
-                        const SizedBox(height: 8),
-                        Text('Subiendo y analizando...', style: AppTextStyles.bodyBold.copyWith(color: Colors.white)),
-                      ],
-                    ),
-                  )
-                : null,
-          ),
-          const SizedBox(height: 14),
-        ],
-
-        Row(
-          children: [
-            Expanded(
-              child: ElevatedButton.icon(
-                onPressed: _isUploadingPhoto ? null : () => _pickAndUploadImage(ImageSource.camera, provider),
-                icon: const Icon(Icons.camera_rounded),
-                label: const Text('Tomar Foto'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primaryGreen,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: OutlinedButton.icon(
-                onPressed: _isUploadingPhoto ? null : () => _pickAndUploadImage(ImageSource.gallery, provider),
-                icon: const Icon(Icons.photo_library_rounded),
-                label: const Text('Galería'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: AppColors.primaryGreen,
-                  side: const BorderSide(color: AppColors.primaryGreen),
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-              ),
-            ),
-          ],
-        ),
-
-        if (_photoAnalysisResult != null) ...[
-          const SizedBox(height: 20),
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: AppColors.greenSurface,
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: AppColors.primaryGreen.withOpacity(0.25)),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Análisis Gemini corporal:', style: AppTextStyles.bodyBold.copyWith(color: AppColors.primaryGreenDark)),
-                const SizedBox(height: 6),
-                Text('Condición Estimada: ${_photoAnalysisResult!['body_condition_estimated']}', style: AppTextStyles.caption.copyWith(fontWeight: FontWeight.bold)),
-                Text(_photoAnalysisResult!['observations'], style: AppTextStyles.caption),
-                const SizedBox(height: 6),
-                Text('Confianza: ${_photoAnalysisResult!['confidence_level']}', style: AppTextStyles.caption.copyWith(fontStyle: FontStyle.italic)),
-              ],
-            ),
-          ),
-        ],
-      ],
-    );
-  }
-
   Widget _guideBullet(String text) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 4),
@@ -2018,92 +1803,6 @@ class _NutricionScreenState extends State<NutricionScreen> with TickerProviderSt
           Expanded(child: Text(text, style: AppTextStyles.caption)),
         ],
       ),
-    );
-  }
-
-  Widget _buildStep4Consideraciones(DataProvider provider) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text('4. Consideraciones Especiales', style: AppTextStyles.h2),
-        const SizedBox(height: 12),
-
-        // Listado de chips editables activos
-        Wrap(
-          spacing: 8.0,
-          runSpacing: 4.0,
-          children: [
-            if (_cPartoLactancia) _considerationChip('Parto / Lactancia', () => setState(() => _cPartoLactancia = false)),
-            if (_cPriorizarForraje) _considerationChip('Priorizar Forraje/Silo', () => setState(() => _cPriorizarForraje = false)),
-            if (_cPriorizarSuplementos) _considerationChip('Priorizar Suplementos', () => setState(() => _cPriorizarSuplementos = false)),
-            if (_cReducirCosto) _considerationChip('Reducir Costo', () => setState(() => _cReducirCosto = false)),
-            if (_cGananciaPeso) _considerationChip('Ganancia de Peso', () => setState(() => _cGananciaPeso = false)),
-            if (_cProdLeche) _considerationChip('Producción Leche', () => setState(() => _cProdLeche = false)),
-            if (_cSoloFinca) _considerationChip('Insumos de Finca', () => setState(() => _cSoloFinca = false)),
-            if (_cEpocaSeca) _considerationChip('Época Seca', () => setState(() => _cEpocaSeca = false)),
-          ],
-        ),
-        const Divider(height: 24),
-
-        // Toggles y descripciones
-        _buildConsiderationTile(
-          'Parto / Lactancia Activa',
-          'Ajusta la ración para la etapa post-parto crítica.',
-          _cPartoLactancia,
-          (val) => setState(() => _cPartoLactancia = val ?? false),
-        ),
-        _buildConsiderationTile(
-          'Priorizar Inclusión de Forraje/Silo',
-          'Forzar la formulación a incluir fibras de calidad y silos.',
-          _cPriorizarForraje,
-          (val) => setState(() => _cPriorizarForraje = val ?? false),
-        ),
-        _buildConsiderationTile(
-          'Priorizar Suplementos y Minerales',
-          'Asegurar un aporte óptimo de minerales y vitaminas.',
-          _cPriorizarSuplementos,
-          (val) => setState(() => _cPriorizarSuplementos = val ?? false),
-        ),
-        _buildConsiderationTile(
-          'Reducir Costo del Plan',
-          'Encuentra la alternativa más económica posible.',
-          _cReducirCosto,
-          (val) => setState(() => _cReducirCosto = val ?? false),
-        ),
-        _buildConsiderationTile(
-          'Priorizar Ganancia de Peso',
-          'Sube el balance calórico para acelerar ganancia diaria.',
-          _cGananciaPeso,
-          (val) => setState(() => _cGananciaPeso = val ?? false),
-        ),
-        _buildConsiderationTile(
-          'Priorizar Producción de Leche',
-          'Estimula la persistencia láctea a través de proteína digestible.',
-          _cProdLeche,
-          (val) => setState(() => _cProdLeche = val ?? false),
-        ),
-        _buildConsiderationTile(
-          'Solo Usar Recursos de la Finca',
-          'Evita la dependencia e inclusión de concentrados externos.',
-          _cSoloFinca,
-          (val) => setState(() => _cSoloFinca = val ?? false),
-        ),
-        _buildConsiderationTile(
-          'Plan Conservador Época Seca',
-          'Optimiza recursos escasos para mantenimiento corporal.',
-          _cEpocaSeca,
-          (val) => setState(() => _cEpocaSeca = val ?? false),
-        ),
-      ],
-    );
-  }
-
-  Widget _considerationChip(String label, VoidCallback onDeleted) {
-    return InputChip(
-      label: Text(label, style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
-      backgroundColor: AppColors.primaryGreen,
-      onDeleted: onDeleted,
-      deleteIconColor: Colors.white,
     );
   }
 
@@ -2120,37 +1819,6 @@ class _NutricionScreenState extends State<NutricionScreen> with TickerProviderSt
         onChanged: onChanged,
         activeColor: AppColors.primaryGreen,
         contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-      ),
-    );
-  }
-
-  Widget _objectiveChip(String label, String value) {
-    final isSelected = _objectiveType == value;
-    return Expanded(
-      child: ChoiceChip(
-        label: Text(
-          label,
-          style: AppTextStyles.caption.copyWith(
-            color: isSelected ? Colors.white : AppColors.textPrimary,
-            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-            fontSize: 11,
-          ),
-        ),
-        selected: isSelected,
-        selectedColor: AppColors.primaryGreen,
-        backgroundColor: AppColors.sandBeige,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-          side: BorderSide(color: isSelected ? AppColors.primaryGreen : AppColors.border),
-        ),
-        onSelected: (selected) {
-          if (selected) {
-            setState(() {
-              _objectiveType = value;
-              _wizardStep = 0;
-            });
-          }
-        },
       ),
     );
   }

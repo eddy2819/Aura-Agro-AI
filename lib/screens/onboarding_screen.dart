@@ -202,9 +202,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         );
       }
     } catch (e) {
-      setState(() {
-        _authError = e.toString().replaceAll("Exception: ", "");
-      });
+      if (mounted) {
+        setState(() {
+          _authError = e.toString().replaceAll("Exception: ", "");
+        });
+      }
     } finally {
       if (mounted) {
         setState(() {

@@ -19,6 +19,7 @@ import '../widgets/ganado/filter_chips.dart';
 import '../widgets/ganado/herd_summary.dart';
 import '../widgets/navigation/top_app_bar.dart';
 import '../widgets/ganado/production_register_sheet.dart';
+import '../services/pdf_export_service.dart';
 
 class GanadoScreen extends StatefulWidget {
   final Function(int)? onNavigate;
@@ -1298,7 +1299,14 @@ class _GanadoScreenState extends State<GanadoScreen> {
             children: [
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [Text('Mi Ganado', style: AppTextStyles.h1)],
+                children: [
+                  Text('Mi Ganado', style: AppTextStyles.h1),
+                  IconButton(
+                    icon: const Icon(LucideIcons.qrCode, color: AppColors.primaryGreen, size: 26),
+                    tooltip: 'Escanear QR / Arete',
+                    onPressed: () => _showScanQRDialog(context, provider),
+                  ),
+                ],
               ),
               Text(
                 '${provider.animals.length} animales registrados',
@@ -1888,6 +1896,46 @@ class _GanadoScreenState extends State<GanadoScreen> {
                     ),
                     const SizedBox(height: 16),
 
+                    // BOTONES DE EXPORTACIÓN PDF
+                    Row(
+                      children: [
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            onPressed: () async {
+                              await PdfExportService.instance.exportTraceabilityCertificate(animal);
+                            },
+                            icon: const Icon(LucideIcons.qrCode, size: 16, color: Colors.white),
+                            label: const Text('Certificado QR', style: TextStyle(color: Colors.white, fontSize: 11)),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.primaryGreen,
+                              elevation: 0,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            onPressed: () async {
+                              final vaccines = provider.vaccines.where((v) => v['animal_id'] == animal.id).toList();
+                              final treatments = provider.medicalTreatments.where((t) => t['animal_id'] == animal.id).toList();
+                              await PdfExportService.instance.exportClinicalHistory(animal, vaccines, treatments);
+                            },
+                            icon: const Icon(LucideIcons.fileText, size: 16, color: Colors.white),
+                            label: const Text('Historial Clínico', style: TextStyle(color: Colors.white, fontSize: 11)),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.primaryGreenDark,
+                              elevation: 0,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+
                     Row(
                       children: [
                         Expanded(
@@ -2231,6 +2279,101 @@ class _GanadoScreenState extends State<GanadoScreen> {
     }
   }
 
+  void _showExitDetailsDialog(BuildContext context, Animal animal, String exitType, DataProvider provider) {
+    final priceController = TextEditingController();
+    final buyerController = TextEditingController();
+    final observationsController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        final isSale = exitType.toLowerCase() == 'venta';
+        return AlertDialog(
+          title: Text('Detalles de la Baja (${exitType.toUpperCase()})', style: AppTextStyles.bodyBold),
+          backgroundColor: AppColors.surface,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (isSale) ...[
+                  TextField(
+                    controller: priceController,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    decoration: const InputDecoration(labelText: 'Precio de Venta (\$)', hintText: 'Ej. 850.00'),
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: buyerController,
+                    decoration: const InputDecoration(labelText: 'Comprador', hintText: 'Ej. Juan Pérez'),
+                  ),
+                  const SizedBox(height: 10),
+                ],
+                TextField(
+                  controller: observationsController,
+                  decoration: InputDecoration(
+                    labelText: isSale ? 'Observaciones de Venta' : 'Causa de muerte / Observaciones',
+                    hintText: 'Detalles adicionales...',
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancelar', style: TextStyle(color: AppColors.textSecondary)),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                double price = 0.0;
+                if (isSale) {
+                  price = double.tryParse(priceController.text) ?? 0.0;
+                  if (price <= 0) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text("Ingresa un precio de venta válido")),
+                    );
+                    return;
+                  }
+                }
+
+                final row = {
+                  'id': "exit_${DateTime.now().millisecondsSinceEpoch}",
+                  'animal_id': animal.id,
+                  'exit_type': exitType,
+                  'exit_date': DateTime.now().toIso8601String().split('T')[0],
+                  'reason': observationsController.text.trim().isNotEmpty
+                      ? observationsController.text.trim()
+                      : "Baja por $exitType",
+                  'sale_price': price,
+                  'buyer': buyerController.text.trim().isNotEmpty ? buyerController.text.trim() : 'N/D',
+                  'observations': observationsController.text.trim(),
+                  'created_at': DateTime.now().toIso8601String(),
+                  'synced': 0,
+                };
+
+                await provider.addAnimalExit(row);
+                Navigator.pop(context); // Cerrar este dialogo
+                Navigator.pop(context); // Cerrar modal sheet de detalles de animal
+
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Baja del animal ${animal.name} registrada exitosamente.', style: AppTextStyles.bodyBold.copyWith(color: Colors.white)),
+                    backgroundColor: AppColors.primaryGreen,
+                    behavior: SnackBarBehavior.floating,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                );
+              },
+              style: ElevatedButton.styleFrom(backgroundColor: AppColors.primaryGreen),
+              child: const Text('Confirmar Baja', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   void _showDeregisterConfirmation(BuildContext context, Animal animal, DataProvider provider) {
     showModalBottomSheet(
       context: context,
@@ -2269,19 +2412,9 @@ class _GanadoScreenState extends State<GanadoScreen> {
                 title: Text('Vendido / Comercializado', style: AppTextStyles.bodyBold),
                 subtitle: Text('El animal fue vendido a otra finca o mercado.', style: AppTextStyles.caption),
                 trailing: const Icon(LucideIcons.chevronRight, size: 20, color: AppColors.textSecondary),
-                onTap: () async {
+                onTap: () {
                   Navigator.pop(sheetContext);
-                  await provider.removeAnimal(animal.id);
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('Se ha dado de baja a ${animal.name} por Venta', style: AppTextStyles.bodyBold.copyWith(color: Colors.white)),
-                        backgroundColor: AppColors.primaryGreen,
-                        behavior: SnackBarBehavior.floating,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                      ),
-                    );
-                  }
+                  _showExitDetailsDialog(context, animal, 'Venta', provider);
                 },
               ),
               const Divider(color: AppColors.border),
@@ -2295,24 +2428,103 @@ class _GanadoScreenState extends State<GanadoScreen> {
                 title: Text('Muerte / Fallecimiento', style: AppTextStyles.bodyBold.copyWith(color: AppColors.alertRed)),
                 subtitle: Text('El animal falleció debido a enfermedad o accidente.', style: AppTextStyles.caption),
                 trailing: const Icon(LucideIcons.chevronRight, size: 20, color: AppColors.textSecondary),
-                onTap: () async {
+                onTap: () {
                   Navigator.pop(sheetContext);
-                  await provider.removeAnimal(animal.id);
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('Se ha registrado la baja de ${animal.name} por fallecimiento', style: AppTextStyles.bodyBold.copyWith(color: Colors.white)),
-                        backgroundColor: AppColors.alertRed,
-                        behavior: SnackBarBehavior.floating,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                      ),
-                    );
-                  }
+                  _showExitDetailsDialog(context, animal, 'Muerte', provider);
                 },
               ),
               const SizedBox(height: 16),
             ],
           ),
+        );
+      },
+    );
+  }
+
+  void _showScanQRDialog(BuildContext context, DataProvider provider) {
+    final tokenController = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Row(
+            children: const [
+              Icon(LucideIcons.qrCode, color: AppColors.primaryGreen),
+              SizedBox(width: 10),
+              Text('Buscar por Arete / QR', style: TextStyle(fontWeight: FontWeight.bold)),
+            ],
+          ),
+          backgroundColor: AppColors.surface,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Ingresa el código del arete o el token del código QR público para consultar trazabilidad.',
+                style: AppTextStyles.caption,
+              ),
+              const SizedBox(height: 14),
+              TextField(
+                controller: tokenController,
+                decoration: const InputDecoration(
+                  labelText: 'Token QR o Tag / Arete',
+                  hintText: 'Ej. 0999, Holstein Premium...',
+                ),
+              ),
+              const SizedBox(height: 14),
+              ElevatedButton.icon(
+                onPressed: () {
+                  final active = provider.animals.where((a) => a.status.toLowerCase() == 'activo').toList();
+                  if (active.isNotEmpty) {
+                    final randomAnimal = active[DateTime.now().second % active.length];
+                    tokenController.text = randomAnimal.qrToken ?? randomAnimal.tag;
+                  }
+                },
+                icon: const Icon(LucideIcons.camera, size: 16),
+                label: const Text('Simular Cámara'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.greenSurface,
+                  foregroundColor: AppColors.primaryGreenDark,
+                  elevation: 0,
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancelar', style: TextStyle(color: AppColors.textSecondary)),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                final query = tokenController.text.trim().toLowerCase();
+                if (query.isEmpty) return;
+
+                final animal = provider.animals.firstWhere(
+                  (a) => a.id.toLowerCase() == query ||
+                         a.tag.toLowerCase().replaceAll('#', '') == query ||
+                         a.tag.toLowerCase() == query ||
+                         (a.qrToken != null && a.qrToken!.toLowerCase() == query),
+                  orElse: () => Animal(id: '', name: '', tag: '', category: '', score: 0, description: '', weightKg: 0.0, status: ''),
+                );
+
+                Navigator.pop(context); // Cerrar dialogo de busqueda
+
+                if (animal.id.isNotEmpty) {
+                  _showAnimalDetailSheet(context, animal, provider);
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Código o Token "$query" no encontrado en el hato local.'),
+                      backgroundColor: AppColors.alertOrange,
+                    ),
+                  );
+                }
+              },
+              style: ElevatedButton.styleFrom(backgroundColor: AppColors.primaryGreen),
+              child: const Text('Consultar', style: TextStyle(color: Colors.white)),
+            ),
+          ],
         );
       },
     );

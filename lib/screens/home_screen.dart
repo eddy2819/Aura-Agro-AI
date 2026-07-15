@@ -14,6 +14,9 @@ import '../widgets/home/alerts_list.dart';
 import '../widgets/home/sanitary_calendar.dart';
 import '../widgets/home/quick_actions.dart';
 import '../widgets/navigation/top_app_bar.dart';
+import 'sos_screen.dart';
+import 'inventory_screen.dart';
+import 'finance_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   final void Function(int navIndex)? onNavigate;
@@ -276,6 +279,43 @@ class HomeScreen extends StatelessWidget {
             ));
             content.add(const SizedBox(height: 16));
 
+            // BOTÓN CRÍTICO DE AURA SOS GANADERO
+            content.add(InkWell(
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (context) => const SosScreen()),
+                );
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+                decoration: BoxDecoration(
+                  color: Colors.red.shade900,
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(color: Colors.red.shade900.withOpacity(0.3), blurRadius: 10, offset: const Offset(0, 4)),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    const Icon(LucideIcons.shieldAlert, color: Colors.white, size: 28),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('AURA SOS GANADERO', style: AppTextStyles.bodyBold.copyWith(color: Colors.white, fontSize: 15)),
+                          const SizedBox(height: 2),
+                          Text('Triaje médico de emergencias y contacto directo', style: AppTextStyles.caption.copyWith(color: Colors.white70)),
+                        ],
+                      ),
+                    ),
+                    const Icon(LucideIcons.chevronRight, color: Colors.white, size: 20),
+                  ],
+                ),
+              ),
+            ));
+            content.add(const SizedBox(height: 16));
+
             content.add(AiRecommendationCard(
               title: 'Mejora la producción de leche',
               description:
@@ -289,6 +329,66 @@ class HomeScreen extends StatelessWidget {
             content.add(const SizedBox(height: 16));
 
             content.add(QuickStatsGrid(onNavigate: onNavigate));
+            content.add(const SizedBox(height: 16));
+
+            // TARJETAS DE ACCESO A FINANZAS E INVENTARIO
+            content.add(Row(
+              children: [
+                Expanded(
+                  child: InkWell(
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(builder: (context) => const FinanceScreen()),
+                      );
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: AppColors.surface,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: AppColors.border),
+                      ),
+                      child: const Column(
+                        children: [
+                          Icon(LucideIcons.wallet, color: AppColors.primaryGreen, size: 24),
+                          SizedBox(height: 8),
+                          Text('Finanzas', style: TextStyle(fontWeight: FontWeight.bold)),
+                          SizedBox(height: 4),
+                          Text('Costos y Ventas', style: TextStyle(fontSize: 10, color: Colors.grey), textAlign: TextAlign.center),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: InkWell(
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(builder: (context) => const InventoryScreen()),
+                      );
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: AppColors.surface,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: AppColors.border),
+                      ),
+                      child: const Column(
+                        children: [
+                          Icon(LucideIcons.package, color: AppColors.primaryGreen, size: 24),
+                          SizedBox(height: 8),
+                          Text('Inventario', style: TextStyle(fontWeight: FontWeight.bold)),
+                          SizedBox(height: 4),
+                          Text('Medicamentos', style: TextStyle(fontSize: 10, color: Colors.grey), textAlign: TextAlign.center),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ));
             content.add(const SizedBox(height: 20));
 
             content.add(SectionTitle(

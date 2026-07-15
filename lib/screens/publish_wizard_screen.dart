@@ -1238,7 +1238,7 @@ class _PublishWizardScreenState extends State<PublishWizardScreen> {
                   const SizedBox(width: 8),
                   Switch(
                     value: _tieneMarcaHierro,
-                    activeColor: AppColors.primaryGreen,
+                    activeThumbColor: AppColors.primaryGreen,
                     onChanged: (val) {
                       setState(() {
                         _tieneMarcaHierro = val;
@@ -2237,13 +2237,13 @@ class _PublishWizardScreenState extends State<PublishWizardScreen> {
                     child: SizedBox(
                       height: 56, // Accesibilidad: Mínimo 56px de altura
                       child: ElevatedButton(
-                        onPressed: _currentStep == 4 ? _finishAndPublish : _nextStep,
+                        onPressed: _currentStep == _activeSteps.length - 1 ? _finishAndPublish : _nextStep,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.primaryGreen,
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                         ),
                         child: Text(
-                          _currentStep == 4 ? 'Publicar ahora' : 'Siguiente',
+                          _currentStep == _activeSteps.length - 1 ? 'Publicar ahora' : 'Siguiente',
                           style: AppTextStyles.bodyBold.copyWith(color: Colors.white, fontSize: 16),
                         ),
                       ),
@@ -2259,16 +2259,19 @@ class _PublishWizardScreenState extends State<PublishWizardScreen> {
   }
 
   Widget _buildStepContent() {
-    switch (_currentStep) {
-      case 0:
+    final stepName = _activeSteps[_currentStep];
+    switch (stepName) {
+      case '¿Qué vendes?':
         return _buildStep1();
-      case 1:
+      case 'Identificación':
+        return _buildStepIdentificacion();
+      case 'Fotos de calidad':
         return _buildStep2();
-      case 2:
+      case 'Verificación':
         return _buildStep3();
-      case 3:
+      case 'Datos de venta':
         return _buildStep4();
-      case 4:
+      case 'Vista previa':
         return _buildStep5();
       default:
         return Container();

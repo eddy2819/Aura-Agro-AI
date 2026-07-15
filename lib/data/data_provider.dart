@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:math';
 import 'db_helper.dart';
 import '../models/animal.dart';
 import '../models/alert_model.dart';
@@ -14,6 +15,9 @@ import '../models/marketplace_item.dart';
 import 'mock_data.dart';
 import '../services/supabase_service.dart';
 import '../services/sync_service.dart';
+import '../services/health_alert_engine.dart';
+import '../services/notification_service.dart';
+import '../services/emergency_ai_service.dart';
 
 
 class DataProvider extends ChangeNotifier {
@@ -36,6 +40,21 @@ class DataProvider extends ChangeNotifier {
 
   List<MarketplaceItem> _marketplaceItems = [];
   List<MarketplaceItem> _myPublications = [];
+
+  // Nuevas tablas MVP
+  List<Map<String, dynamic>> _sosCases = [];
+  List<Map<String, dynamic>> _animalExits = [];
+  List<Map<String, dynamic>> _medicines = [];
+  List<Map<String, dynamic>> _medicalTreatments = [];
+  List<Map<String, dynamic>> _reproductionRecords = [];
+  List<Map<String, dynamic>> _operatingExpenses = [];
+
+  List<Map<String, dynamic>> get sosCases => _sosCases;
+  List<Map<String, dynamic>> get animalExits => _animalExits;
+  List<Map<String, dynamic>> get medicines => _medicines;
+  List<Map<String, dynamic>> get medicalTreatments => _medicalTreatments;
+  List<Map<String, dynamic>> get reproductionRecords => _reproductionRecords;
+  List<Map<String, dynamic>> get operatingExpenses => _operatingExpenses;
 
   List<Animal> get animals => _animals;
   List<AlertModel> get alerts {
@@ -99,14 +118,16 @@ class DataProvider extends ChangeNotifier {
           final exists = allAlerts.any((a) => a.animalTag == animal.tag && a.title.startsWith(alertTitle.split(":")[0]));
           if (!exists) {
             allAlerts.add(AlertModel(
+              id: 'alert_nut_${animal.id}_${DateTime.now().millisecondsSinceEpoch}',
+              animalId: animal.id,
               animalName: "${animal.name} (${animal.category})",
               animalTag: animal.tag,
-              farm: _profile?['farm_name'] ?? 'Mi Finca',
-              detectedAgo: 'Hace unas horas',
+              type: 'nutrition',
+              riskLevel: 'amarillo',
               title: alertTitle,
-              riskScore: 78,
-              symptoms: const ['Plan Activo', 'Falta Seguimiento'],
-              aiRecommendation: aiRec,
+              description: 'Plan Activo, Falta Seguimiento : $aiRec',
+              source: _profile?['farm_name'] ?? 'Mi Finca',
+              createdAt: DateTime.now().toIso8601String(),
             ));
           }
         }
@@ -169,6 +190,14 @@ class DataProvider extends ChangeNotifier {
       _nutritionRequirements = await DBHelper.instance.getAllNutritionRequirements();
       await _loadAllWeightsAndProduction();
       
+      // Cargar nuevas tablas MVP
+      _sosCases = await DBHelper.instance.getAllSosCases();
+      _animalExits = await DBHelper.instance.getAllAnimalExits();
+      _medicines = await DBHelper.instance.getAllMedicines();
+      _medicalTreatments = await DBHelper.instance.getAllMedicalTreatments();
+      _reproductionRecords = await DBHelper.instance.getAllReproductionRecords();
+      _operatingExpenses = await DBHelper.instance.getAllOperatingExpenses();
+
       final dbMarketplaceItems = await DBHelper.instance.getAllMarketplaceItems();
       _myPublications = dbMarketplaceItems;
       _marketplaceItems = [...dbMarketplaceItems, ...MockData.marketplaceItems];
@@ -256,10 +285,19 @@ class DataProvider extends ChangeNotifier {
 
   // Cerrar Sesión (Resetear Onboarding, limpiar Supabase y SQLite)
   Future<void> logout() async {
-    // 1. Cerrar sesión en Supabase
+    // 1. Forzar una sincronización final para asegurar que los datos locales suban antes de limpiar la base de datos
+    if (SupabaseService.instance.isEnabled && SupabaseService.instance.isAuthenticated) {
+      try {
+        await SyncService.instance.sync();
+      } catch (e) {
+        debugPrint("Error in final sync during logout: $e");
+      }
+    }
+
+    // 2. Cerrar sesión en Supabase
     await SupabaseService.instance.signOut();
 
-    // 2. Limpiar todos los datos locales de SQLite
+    // 3. Limpiar todos los datos locales de SQLite
     await DBHelper.instance.clearAllData();
 
     // 3. Resetear Onboarding
@@ -376,6 +414,14 @@ class DataProvider extends ChangeNotifier {
       _nutritionResources = await DBHelper.instance.getAllNutritionResources();
       _nutritionPlans = await DBHelper.instance.getAllNutritionPlans();
       await _loadAllWeightsAndProduction();
+
+      _sosCases = await DBHelper.instance.getAllSosCases();
+      _animalExits = await DBHelper.instance.getAllAnimalExits();
+      _medicines = await DBHelper.instance.getAllMedicines();
+      _medicalTreatments = await DBHelper.instance.getAllMedicalTreatments();
+      _reproductionRecords = await DBHelper.instance.getAllReproductionRecords();
+      _operatingExpenses = await DBHelper.instance.getAllOperatingExpenses();
+
       final dbMarketplaceItems = await DBHelper.instance.getAllMarketplaceItems();
       _myPublications = dbMarketplaceItems;
       _marketplaceItems = [...dbMarketplaceItems, ...MockData.marketplaceItems];
@@ -474,14 +520,16 @@ class DataProvider extends ChangeNotifier {
   // Notificar al Veterinario para actualizar vacuna
   Future<void> sendVaccineNotification(Animal animal) async {
     final newAlert = AlertModel(
+      id: 'alert_vac_${animal.id}_${DateTime.now().millisecondsSinceEpoch}',
+      animalId: animal.id,
       animalName: "${animal.name} (${animal.category})",
       animalTag: animal.tag,
-      farm: _profile?['farm_name'] ?? 'Mi Finca',
-      detectedAgo: 'Hace un momento',
+      type: 'health',
+      riskLevel: 'amarillo',
       title: 'Vacunación Solicitada: ${animal.vaccineStatus ?? "Vencida"}',
-      riskScore: 80,
-      symptoms: const ['Pendiente', 'Solicitado por propietario'],
-      aiRecommendation: 'El propietario ha solicitado actualizar la vacuna de ${animal.name} (${animal.tag}). Por favor, programe una visita para su aplicación.',
+      description: 'Pendiente, Solicitado por propietario : El propietario ha solicitado actualizar la vacuna de ${animal.name} (${animal.tag}). Por favor, programe una visita para su aplicación.',
+      source: _profile?['farm_name'] ?? 'Mi Finca',
+      createdAt: DateTime.now().toIso8601String(),
     );
 
     await DBHelper.instance.insertAlert(newAlert);
@@ -802,6 +850,247 @@ class DataProvider extends ChangeNotifier {
       await loadFarmAuthorizations();
       // Forzar ciclo de sincronización para actualizar los animales disponibles localmente
       await SyncService.instance.sync();
+    }
+  }
+
+  // --- MÉTODOS MVP Y LOGICA DE NEGOCIO ---
+
+  Future<void> addSosCase(Map<String, dynamic> row) async {
+    final db = DBHelper.instance;
+    await db.insertSosCase(row);
+
+    // Si el caso es rojo, generar una alerta sanitaria crítica instantánea
+    if (row['risk_level'] == 'rojo') {
+      final animal = _animals.firstWhere((a) => a.id == row['animal_id'], orElse: () => _animals.first);
+      final alertId = "sos_alert_${row['id']}";
+      
+      final alert = AlertModel(
+        id: alertId,
+        animalId: animal.id,
+        animalName: animal.name,
+        animalTag: animal.tag,
+        type: 'sos',
+        riskLevel: 'rojo',
+        title: 'CRÍTICO: SOS - ${row['title']}',
+        description: row['explanation'] as String? ?? 'Atención inmediata requerida.',
+        source: 'Aura SOS',
+        createdAt: DateTime.now().toIso8601String(),
+      );
+
+      await db.insertAlert(alert);
+
+      // Mostrar notificación local instantánea
+      await NotificationService.instance.showInstantNotification(
+        id: row['id'].hashCode,
+        title: '🔴 EMERGENCIAS AURA SOS: ${animal.name}',
+        body: 'Riesgo crítico detectado. Notificación enviada al veterinario.',
+        payload: alertId,
+      );
+    }
+
+    await HealthAlertEngine.instance.runEngine();
+    await _reloadMemoryDataOnly();
+
+    if (SupabaseService.instance.isEnabled && SupabaseService.instance.isAuthenticated) {
+      SyncService.instance.sync();
+    }
+  }
+
+  Future<void> addAnimalExit(Map<String, dynamic> row) async {
+    final db = DBHelper.instance;
+    await db.insertAnimalExit(row);
+
+    // Buscar y actualizar el estado de salud y estado general del animal
+    final animalId = row['animal_id'] as String;
+    final animal = _animals.firstWhere((a) => a.id == animalId);
+
+    String newStatus = 'Inactivo';
+    final exitType = row['exit_type'].toString().toLowerCase();
+    if (exitType == 'venta') newStatus = 'Vendido';
+    else if (exitType == 'muerte') newStatus = 'Fallecido';
+    else if (exitType == 'descarte') newStatus = 'Descartado';
+    else if (exitType == 'traslado') newStatus = 'Trasladado';
+
+    final updatedAnimal = animal.copyWith(status: newStatus);
+    await db.updateAnimal(updatedAnimal);
+
+    // Si fue venta, registrar automáticamente un ingreso financiero positivo
+    if (exitType == 'venta') {
+      final double price = (row['sale_price'] as num?)?.toDouble() ?? 0.0;
+      await addOperatingExpense({
+        'id': 'inc_${row['id']}',
+        'category': 'Ventas de animales',
+        'amount': price, // Monto positivo representa ingreso
+        'date': row['exit_date'],
+        'description': "Venta de animal ${animal.name} (${animal.tag}). Comprador: ${row['buyer'] ?? 'N/D'}",
+        'animal_id': animalId,
+        'farm_id': _profile?['farm_name'] ?? 'Mi Finca',
+        'created_at': DateTime.now().toIso8601String(),
+        'synced': 0,
+      });
+    }
+
+    await HealthAlertEngine.instance.runEngine();
+    await _reloadMemoryDataOnly();
+
+    if (SupabaseService.instance.isEnabled && SupabaseService.instance.isAuthenticated) {
+      SyncService.instance.sync();
+    }
+  }
+
+  Future<void> addMedicine(Map<String, dynamic> row) async {
+    await DBHelper.instance.insertMedicine(row);
+    await HealthAlertEngine.instance.runEngine();
+    await _reloadMemoryDataOnly();
+
+    if (SupabaseService.instance.isEnabled && SupabaseService.instance.isAuthenticated) {
+      SyncService.instance.sync();
+    }
+  }
+
+  Future<void> updateMedicine(Map<String, dynamic> row) async {
+    await DBHelper.instance.updateMedicine(row);
+    await HealthAlertEngine.instance.runEngine();
+    await _reloadMemoryDataOnly();
+
+    if (SupabaseService.instance.isEnabled && SupabaseService.instance.isAuthenticated) {
+      SyncService.instance.sync();
+    }
+  }
+
+  Future<void> addMedicalTreatment(Map<String, dynamic> row) async {
+    final db = DBHelper.instance;
+    await db.insertMedicalTreatment(row);
+
+    // Descontar inventario de medicamentos si aplica
+    final medId = row['medicine_id'] as String?;
+    final double dose = (row['dose'] as num?)?.toDouble() ?? 0.0;
+    if (medId != null && medId.isNotEmpty && dose > 0) {
+      final med = _medicines.firstWhere((m) => m['id'] == medId, orElse: () => {});
+      if (med.isNotEmpty) {
+        final double currentQty = (med['quantity'] as num?)?.toDouble() ?? 0.0;
+        final double newQty = max(0.0, currentQty - dose);
+        await db.updateMedicineStock(medId, newQty);
+      }
+    }
+
+    await HealthAlertEngine.instance.runEngine();
+    await _reloadMemoryDataOnly();
+
+    if (SupabaseService.instance.isEnabled && SupabaseService.instance.isAuthenticated) {
+      SyncService.instance.sync();
+    }
+  }
+
+  Future<void> addReproductionRecord(Map<String, dynamic> row) async {
+    final db = DBHelper.instance;
+    await db.insertReproductionRecord(row);
+
+    // Si el evento es gestación confirmada, programar una notificación local 48h antes del parto
+    if (row['event_type'] == 'Gestación confirmada' && row['expected_birth_date'] != null) {
+      try {
+        final birthDate = DateTime.parse(row['expected_birth_date'] as String);
+        final notifyDate = birthDate.subtract(const Duration(days: 2));
+        final animal = _animals.firstWhere((a) => a.id == row['animal_id']);
+
+        await NotificationService.instance.scheduleNotification(
+          id: row['id'].hashCode,
+          title: '🐄 PARTO PRÓXIMO: ${animal.name}',
+          body: 'Se estima el parto de ${animal.name} en 48 horas. Prepara el área de parición.',
+          scheduledDate: notifyDate,
+        );
+      } catch (e) {
+        debugPrint("Error programando notificación de parto: $e");
+      }
+    }
+
+    await HealthAlertEngine.instance.runEngine();
+    await _reloadMemoryDataOnly();
+
+    if (SupabaseService.instance.isEnabled && SupabaseService.instance.isAuthenticated) {
+      SyncService.instance.sync();
+    }
+  }
+
+  Future<void> addOperatingExpense(Map<String, dynamic> row) async {
+    await DBHelper.instance.insertOperatingExpense(row);
+    await _reloadMemoryDataOnly();
+
+    if (SupabaseService.instance.isEnabled && SupabaseService.instance.isAuthenticated) {
+      SyncService.instance.sync();
+    }
+  }
+
+  Future<void> applyBatchEvent({
+    required String lote,
+    required String eventType,
+    required String description,
+    required DateTime date,
+    String? medicineId,
+    double? dose,
+  }) async {
+    final batchAnimals = _animals.where((a) => a.lote == lote && a.status.toLowerCase() == 'activo').toList();
+    if (batchAnimals.isEmpty) return;
+
+    final db = DBHelper.instance;
+
+    for (var animal in batchAnimals) {
+      final String id = "${eventType.toLowerCase().substring(0, 3)}_${animal.id}_${DateTime.now().millisecondsSinceEpoch}";
+      
+      if (eventType.toLowerCase() == 'vacunación' || eventType.toLowerCase() == 'vacunacion') {
+        final Map<String, dynamic> vacMap = {
+          'animal_id': animal.id,
+          'name': medicineId ?? description,
+          'date_applied': date.toIso8601String().split('T')[0],
+          'dose': dose != null ? "${dose.toStringAsFixed(1)} ml" : "N/D",
+          'notes': description,
+        };
+        await db.insertVaccine(vacMap);
+      } else if (eventType.toLowerCase() == 'pesaje') {
+        double wt = animal.weightKg;
+        try {
+          wt = double.tryParse(description.replaceAll(RegExp(r'[^0-9.]'), '')) ?? animal.weightKg;
+        } catch (_) {}
+        await db.insertWeightRecord(WeightRecord(
+          animalId: animal.id,
+          date: date.toIso8601String().split('T')[0],
+          weightKg: wt,
+        ));
+      } else {
+        final Map<String, dynamic> treatmentMap = {
+          'id': id,
+          'animal_id': animal.id,
+          'diagnosis': eventType,
+          'symptoms': 'Lote event',
+          'treatment': description,
+          'medicine_id': medicineId ?? '',
+          'dose': dose ?? 0.0,
+          'responsible': _profile?['owner_name'] ?? 'Ganadero',
+          'date': date.toIso8601String().split('T')[0],
+          'observations': 'Aplicación colectiva en lote $lote',
+          'created_at': DateTime.now().toIso8601String(),
+          'synced': 0,
+        };
+        await db.insertMedicalTreatment(treatmentMap);
+      }
+    }
+
+    // Descontar del inventario
+    if (medicineId != null && medicineId.isNotEmpty && dose != null && dose > 0) {
+      final med = _medicines.firstWhere((m) => m['id'] == medicineId, orElse: () => {});
+      if (med.isNotEmpty) {
+        final double currentQty = (med['quantity'] as num?)?.toDouble() ?? 0.0;
+        final double totalDose = dose * batchAnimals.length;
+        final double newQty = max(0.0, currentQty - totalDose);
+        await db.updateMedicineStock(medicineId, newQty);
+      }
+    }
+
+    await HealthAlertEngine.instance.runEngine();
+    await _reloadMemoryDataOnly();
+    
+    if (SupabaseService.instance.isEnabled && SupabaseService.instance.isAuthenticated) {
+      SyncService.instance.sync();
     }
   }
 }

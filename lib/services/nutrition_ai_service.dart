@@ -6,7 +6,6 @@ import '../models/nutrition_resource.dart';
 import '../models/nutrition_plan.dart';
 import '../models/weight_record.dart';
 import '../models/production_record.dart';
-import '../models/nutrition_requirement.dart';
 import 'supabase_service.dart';
 
 /// Resultado detallado de un plan nutricional generado por el motor de IA.
@@ -395,22 +394,14 @@ class LocalHeuristicNutritionService implements NutritionAiService {
     }
 
     final category = targetAnimals.first.category;
-    double totalWeight = 0;
-    for (var animal in targetAnimals) {
-      totalWeight += animal.weightKg;
-    }
-    final avgWeight = totalWeight / targetAnimals.length;
+
 
     // Obtener los requerimientos determinísticos (DMI, proteína y energía)
     double dmiNeeded = 15.0;
-    double targetProteinPct = 14.0;
-    double targetEnergyDensity = 2.4;
 
     if (calculatedRequirements != null && calculatedRequirements.containsKey(category)) {
       final reqs = calculatedRequirements[category]!;
       dmiNeeded = (reqs['dmi_required_kg'] ?? 15.0) as double;
-      targetProteinPct = (reqs['protein_required_pct'] ?? 14.0) as double;
-      targetEnergyDensity = (reqs['energy_required_mcal_per_kg'] ?? 2.4) as double;
     }
 
     // Evaluar disponibilidad de recursos
@@ -421,7 +412,6 @@ class LocalHeuristicNutritionService implements NutritionAiService {
     // Calcular cumplimiento del plan anterior
     double complianceFactor = 1.0;
     String historyFeedback = "";
-    bool hasHistory = false;
 
     final representative = targetAnimals.first;
     final historyAnalysis = PlanHistoryAnalyzer.analyze(
@@ -432,7 +422,6 @@ class LocalHeuristicNutritionService implements NutritionAiService {
     );
 
     if (!historyAnalysis.feedbackNote.contains("No se encontraron")) {
-      hasHistory = true;
       historyFeedback = historyAnalysis.feedbackNote;
       if (historyAnalysis.adjustmentNeeded) {
         complianceFactor = 0.85; // Ajuste preventivo al alza
