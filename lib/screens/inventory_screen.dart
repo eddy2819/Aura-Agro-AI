@@ -11,6 +11,7 @@ import '../services/medicine_vision_service.dart';
 import '../services/pdf_export_service.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_text_styles.dart';
+import '../widgets/navigation/top_app_bar.dart';
 
 class InventoryScreen extends StatefulWidget {
   const InventoryScreen({super.key});
@@ -45,6 +46,13 @@ class _InventoryScreenState extends State<InventoryScreen> {
 
   String _filter = 'Todos';
   bool _isScanning = false;
+  final _searchController = TextEditingController();
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 
   Future<void> _scanLabel() async {
     final picked = await ImagePicker().pickImage(
@@ -438,14 +446,27 @@ class _InventoryScreenState extends State<InventoryScreen> {
   }
 
   Widget _medicalWarning() => Container(
-    padding: const EdgeInsets.all(12),
+    padding: const EdgeInsets.all(18),
     decoration: BoxDecoration(
       color: AppColors.alertOrangeSurface,
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: BorderRadius.circular(22),
+      border: Border.all(color: AppColors.alertOrange.withValues(alpha: .25)),
     ),
-    child: Text(
-      'AURA Agro AI no receta medicamentos ni reemplaza al médico veterinario. Verifica dosis, tiempo de retiro y autorización profesional antes de usar.',
-      style: AppTextStyles.caption.copyWith(fontWeight: FontWeight.bold),
+    child: Row(
+      children: [
+        const Icon(
+          LucideIcons.triangleAlert,
+          color: AppColors.alertOrange,
+          size: 36,
+        ),
+        const SizedBox(width: 16),
+        Expanded(
+          child: Text(
+            'AURA Agro AI no receta medicamentos ni reemplaza al médico veterinario. Verifica dosis, tiempo de retiro y autorización profesional antes de usar.',
+            style: AppTextStyles.body.copyWith(height: 1.45),
+          ),
+        ),
+      ],
     ),
   );
 
@@ -476,9 +497,14 @@ class _InventoryScreenState extends State<InventoryScreen> {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<DataProvider>();
-    final medicines = provider.medicines
-        .where((item) => _filter == 'Todos' || item['type'] == _filter)
-        .toList();
+    final query = _searchController.text.trim().toLowerCase();
+    final medicines = provider.medicines.where((item) {
+      if (_filter != 'Todos' && item['type'] != _filter) return false;
+      if (query.isEmpty) return true;
+      return ['name', 'active_ingredient', 'batch_number', 'provider'].any(
+        (key) => (item[key] ?? '').toString().toLowerCase().contains(query),
+      );
+    }).toList();
     final expiring = provider.getExpiringMedicines();
     final low = provider.getLowStockMedicines();
     final expired = provider.medicines
@@ -487,8 +513,8 @@ class _InventoryScreenState extends State<InventoryScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(
-        title: const Text('Inventario Inteligente'),
+      appBar: AuraPageAppBar(
+        title: 'Inventario Inteligente',
         actions: [
           PopupMenuButton<String>(
             onSelected: (value) {
@@ -519,62 +545,122 @@ class _InventoryScreenState extends State<InventoryScreen> {
         ],
       ),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 120),
+        padding: const EdgeInsets.fromLTRB(16, 18, 16, 120),
         children: [
           _medicalWarning(),
-          const SizedBox(height: 14),
-          Text(
-            '${provider.medicines.length} productos registrados',
-            style: AppTextStyles.h2,
+          const SizedBox(height: 24),
+          Row(
+            children: [
+              Container(
+                width: 50,
+                height: 50,
+                decoration: const BoxDecoration(
+                  color: AppColors.greenSurface,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  LucideIcons.packageOpen,
+                  color: AppColors.primaryGreen,
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Text(
+                  '${provider.medicines.length} ${provider.medicines.length == 1 ? 'producto registrado' : 'productos registrados'}',
+                  style: AppTextStyles.h2,
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 16),
           Row(
             children: [
               Expanded(
                 child: _summary(
                   'Por vencer',
                   '${expiring.length}',
-                  AppColors.alertOrange,
+                  AppColors.primaryGreen,
+                  LucideIcons.calendarClock,
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 10),
               Expanded(
                 child: _summary(
                   'Stock bajo',
                   '${low.length}',
                   AppColors.alertOrange,
+                  LucideIcons.triangleAlert,
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 10),
               Expanded(
-                child: _summary('Críticos', '$expired', AppColors.alertRed),
+                child: _summary(
+                  'Críticos',
+                  '$expired',
+                  AppColors.alertRed,
+                  LucideIcons.octagonAlert,
+                ),
               ),
             ],
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 18),
           Row(
             children: [
               Expanded(
-                child: ElevatedButton.icon(
-                  onPressed: _isScanning ? null : _scanLabel,
-                  icon: _isScanning
-                      ? const SizedBox.square(
-                          dimension: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(LucideIcons.camera),
-                  label: const Text('Registrar con foto'),
+                child: SizedBox(
+                  height: 58,
+                  child: ElevatedButton.icon(
+                    onPressed: _isScanning ? null : _scanLabel,
+                    icon: _isScanning
+                        ? const SizedBox.square(
+                            dimension: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(LucideIcons.camera),
+                    label: const Text('Registrar\ncon foto'),
+                  ),
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 10),
               Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () => _showMedicineForm(),
-                  icon: const Icon(LucideIcons.pencil),
-                  label: const Text('Manualmente'),
+                child: SizedBox(
+                  height: 58,
+                  child: OutlinedButton.icon(
+                    onPressed: () => _showMedicineForm(),
+                    icon: const Icon(LucideIcons.pencil),
+                    label: const Text('Manualmente'),
+                  ),
                 ),
               ),
             ],
+          ),
+          const SizedBox(height: 18),
+          TextField(
+            controller: _searchController,
+            onChanged: (_) => setState(() {}),
+            decoration: InputDecoration(
+              hintText: 'Buscar producto, principio activo o lote...',
+              prefixIcon: const Icon(LucideIcons.search),
+              suffixIcon: query.isEmpty
+                  ? const Icon(LucideIcons.slidersHorizontal)
+                  : IconButton(
+                      onPressed: () {
+                        _searchController.clear();
+                        setState(() {});
+                      },
+                      icon: const Icon(Icons.close),
+                    ),
+              filled: true,
+              fillColor: Colors.white,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(18),
+                borderSide: BorderSide.none,
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(18),
+                borderSide: const BorderSide(color: AppColors.border),
+              ),
+            ),
           ),
           const SizedBox(height: 14),
           SingleChildScrollView(
@@ -607,87 +693,181 @@ class _InventoryScreenState extends State<InventoryScreen> {
     );
   }
 
-  Widget _summary(String label, String value, Color color) => Container(
-    padding: const EdgeInsets.all(12),
-    decoration: BoxDecoration(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(16),
-      border: Border.all(color: AppColors.border),
-    ),
-    child: Column(
-      children: [
-        Text(value, style: AppTextStyles.h2.copyWith(color: color)),
-        Text(label, style: AppTextStyles.caption),
-      ],
-    ),
-  );
+  Widget _summary(String label, String value, Color color, IconData icon) =>
+      Container(
+        height: 118,
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: AppColors.border),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x0C000000),
+              blurRadius: 14,
+              offset: Offset(0, 5),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  width: 34,
+                  height: 34,
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: .11),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(icon, color: color, size: 19),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  value,
+                  style: AppTextStyles.h1.copyWith(color: color, fontSize: 30),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(label, style: AppTextStyles.caption),
+          ],
+        ),
+      );
 
   Widget _medicineCard(Map<String, dynamic> medicine) {
     final status = _status(medicine);
     final color = _statusColor(status);
-    return Card(
+    final active = (medicine['active_ingredient'] ?? '').toString().trim();
+    final batch = (medicine['batch_number'] ?? '').toString().trim();
+    final supplier = (medicine['provider'] ?? '').toString().trim();
+    final expiration = (medicine['expiration_date'] ?? '').toString().trim();
+    return Container(
       margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: AppColors.border),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x0D000000),
+            blurRadius: 16,
+            offset: Offset(0, 6),
+          ),
+        ],
+      ),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(18),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                CircleAvatar(
-                  backgroundColor: color.withValues(alpha: 0.12),
-                  child: Icon(LucideIcons.briefcaseMedical, color: color),
+                Container(
+                  width: 58,
+                  height: 58,
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.11),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    LucideIcons.briefcaseMedical,
+                    color: color,
+                    size: 29,
+                  ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 14),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         medicine['name'] ?? '',
-                        style: AppTextStyles.bodyBold,
+                        style: AppTextStyles.h2.copyWith(fontSize: 20),
                       ),
+                      const SizedBox(height: 3),
                       Text(
-                        '${medicine['type'] ?? 'Otro'} · ${medicine['active_ingredient'] ?? 'Principio activo no registrado'}',
+                        '${medicine['type'] ?? 'Otro'}${active.isEmpty ? '' : ' · $active'}',
                         style: AppTextStyles.caption,
                       ),
                     ],
                   ),
                 ),
-                Chip(
-                  label: Text(status),
-                  labelStyle: TextStyle(color: color, fontSize: 10),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: .09),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: color.withValues(alpha: .25)),
+                  ),
+                  child: Text(
+                    status,
+                    style: TextStyle(
+                      color: color,
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                 ),
               ],
             ),
-            const SizedBox(height: 10),
-            Text(
-              'Stock: ${medicine['quantity']} ${medicine['unit']} · Vence: ${medicine['expiration_date'] ?? 'Sin fecha'}',
-              style: AppTextStyles.body,
+            const SizedBox(height: 16),
+            const Divider(height: 1),
+            const SizedBox(height: 14),
+            Wrap(
+              spacing: 18,
+              runSpacing: 10,
+              children: [
+                _medicineInfo(
+                  LucideIcons.packageOpen,
+                  'Stock: ${medicine['quantity']} ${medicine['unit']}',
+                  AppColors.primaryGreen,
+                ),
+                _medicineInfo(
+                  LucideIcons.calendarDays,
+                  'Vence: ${expiration.isEmpty ? 'Sin fecha' : expiration}',
+                  AppColors.primaryGreen,
+                ),
+                if (batch.isNotEmpty)
+                  _medicineInfo(LucideIcons.tag, 'Lote: $batch'),
+                if (supplier.isNotEmpty)
+                  _medicineInfo(LucideIcons.truck, 'Proveedor: $supplier'),
+              ],
             ),
             if ((medicine['withdrawal_period'] ?? '').toString().isNotEmpty)
-              Text(
-                'Retiro: ${medicine['withdrawal_period']}',
-                style: AppTextStyles.caption.copyWith(
-                  color: AppColors.alertOrange,
+              Padding(
+                padding: const EdgeInsets.only(top: 10),
+                child: Text(
+                  'Retiro: ${medicine['withdrawal_period']}',
+                  style: AppTextStyles.caption.copyWith(
+                    color: AppColors.alertOrange,
+                  ),
                 ),
               ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 16),
             Row(
               children: [
                 Expanded(
-                  child: OutlinedButton(
+                  child: OutlinedButton.icon(
                     onPressed: () => _showMedicineForm(item: medicine),
-                    child: const Text('Ver / editar'),
+                    icon: const Icon(LucideIcons.eye, size: 19),
+                    label: const Text('Ver detalle'),
                   ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 10),
                 Expanded(
-                  child: ElevatedButton(
+                  child: ElevatedButton.icon(
                     onPressed: status == 'Agotado'
                         ? null
                         : () => _registerUse(medicine),
-                    child: const Text('Registrar uso'),
+                    icon: const Icon(LucideIcons.clipboardPlus, size: 19),
+                    label: const Text('Registrar uso'),
                   ),
                 ),
               ],
@@ -697,4 +877,19 @@ class _InventoryScreenState extends State<InventoryScreen> {
       ),
     );
   }
+
+  Widget _medicineInfo(IconData icon, String text, [Color? color]) => Row(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      Icon(icon, size: 17, color: color ?? AppColors.textSecondary),
+      const SizedBox(width: 7),
+      Text(
+        text,
+        style: AppTextStyles.caption.copyWith(
+          color: color ?? AppColors.textSecondary,
+          fontWeight: color == null ? FontWeight.normal : FontWeight.w600,
+        ),
+      ),
+    ],
+  );
 }

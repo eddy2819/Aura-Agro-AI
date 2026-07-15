@@ -15,6 +15,7 @@ import '../widgets/home/sanitary_calendar.dart';
 import '../widgets/home/quick_actions.dart';
 import '../widgets/home/home_module_grid.dart';
 import '../widgets/common/aura_brand_logo.dart';
+import '../widgets/home/ganadero_home_dashboard.dart';
 import '../widgets/navigation/top_app_bar.dart';
 import 'sos_screen.dart';
 import 'inventory_screen.dart';
@@ -68,6 +69,16 @@ class HomeScreen extends StatelessWidget {
               : (hour >= 12 && hour < 19)
               ? 'Buenas tardes'
               : 'Buenas noches';
+
+          if (role == 'Ganadero') {
+            return GanaderoHomeDashboard(
+              provider: provider,
+              greeting: greeting,
+              ownerName: ownerName,
+              farmName: farmName,
+              onNavigate: onNavigate,
+            );
+          }
 
           final content = <Widget>[];
 
@@ -333,7 +344,7 @@ class HomeScreen extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'AURA Agro AI',
+                            'AURA',
                             style: AppTextStyles.h2.copyWith(
                               color: AppColors.primaryGreenDark,
                               fontWeight: FontWeight.w900,

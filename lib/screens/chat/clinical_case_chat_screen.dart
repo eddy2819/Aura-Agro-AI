@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../data/data_provider.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_text_styles.dart';
+import '../../widgets/navigation/top_app_bar.dart';
 
 class ClinicalCaseChatScreen extends StatefulWidget {
   final Map<String, dynamic> chat;
@@ -60,12 +61,8 @@ class _ClinicalCaseChatScreenState extends State<ClinicalCaseChatScreen> {
     );
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          'Caso ${widget.chat['priority']?.toString().toUpperCase()}',
-        ),
-        backgroundColor: AppColors.primaryGreenDark,
-        foregroundColor: Colors.white,
+      appBar: AuraPageAppBar(
+        title: 'Caso ${widget.chat['priority']?.toString().toUpperCase()}',
       ),
       body: Column(
         children: [

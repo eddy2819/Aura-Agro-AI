@@ -7,6 +7,7 @@ import '../theme/app_colors.dart';
 import '../theme/app_text_styles.dart';
 import 'chat/clinical_case_chat_screen.dart';
 import 'sos_screen.dart';
+import '../widgets/navigation/top_app_bar.dart';
 
 class MyVeterinarianScreen extends StatelessWidget {
   const MyVeterinarianScreen({super.key});
@@ -69,7 +70,7 @@ class MyVeterinarianScreen extends StatelessWidget {
     final active = links.where((l) => l['status'] == 'accepted').toList();
     final chats = provider.clinicalCaseChats;
     return Scaffold(
-      appBar: AppBar(title: const Text('Mi Veterinario')),
+      appBar: const AuraPageAppBar(title: 'Mi Veterinario'),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [

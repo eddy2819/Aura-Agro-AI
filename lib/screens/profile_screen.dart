@@ -5,6 +5,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../data/data_provider.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_text_styles.dart';
+import '../widgets/navigation/top_app_bar.dart';
 import 'onboarding_screen.dart';
 import '../services/supabase_service.dart';
 
@@ -29,10 +30,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final provider = Provider.of<DataProvider>(context, listen: false);
     final profile = provider.profile ?? {};
     final supabaseEmail = SupabaseService.instance.currentUser?.email;
-    _nameController = TextEditingController(text: profile['owner_name'] ?? 'Eddy');
-    _farmController = TextEditingController(text: profile['farm_name'] ?? 'Finca El Paraíso');
-    _locationController = TextEditingController(text: profile['location'] ?? 'Loja, Ecuador');
-    _emailController = TextEditingController(text: supabaseEmail ?? profile['email'] ?? 'usuario@auraagro.ai');
+    _nameController = TextEditingController(
+      text: profile['owner_name'] ?? 'Eddy',
+    );
+    _farmController = TextEditingController(
+      text: profile['farm_name'] ?? 'Finca El Paraíso',
+    );
+    _locationController = TextEditingController(
+      text: profile['location'] ?? 'Loja, Ecuador',
+    );
+    _emailController = TextEditingController(
+      text: supabaseEmail ?? profile['email'] ?? 'usuario@auraagro.ai',
+    );
   }
 
   @override
@@ -63,7 +72,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
             backgroundColor: AppColors.primaryGreen,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
           ),
         );
       }
@@ -83,7 +94,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('Cancelar', style: AppTextStyles.bodyBold.copyWith(color: AppColors.textSecondary)),
+            child: Text(
+              'Cancelar',
+              style: AppTextStyles.bodyBold.copyWith(
+                color: AppColors.textSecondary,
+              ),
+            ),
           ),
           ElevatedButton(
             onPressed: () async {
@@ -93,21 +109,32 @@ class _ProfileScreenState extends State<ProfileScreen> {
               if (context.mounted) {
                 Navigator.of(context).pushAndRemoveUntil(
                   PageRouteBuilder(
-                    pageBuilder: (context, animation, secondaryAnimation) => const OnboardingScreen(),
-                    transitionsBuilder: (context, animation, secondaryAnimation, child) {
-                      const begin = Offset(-1.0, 0.0); // Deslizar desde la izquierda al cerrar sesión
-                      const end = Offset.zero;
-                      const curve = Curves.easeOutCubic;
-                      final slideTween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
-                      final fadeTween = Tween<double>(begin: 0.0, end: 1.0).chain(CurveTween(curve: curve));
-                      return SlideTransition(
-                        position: animation.drive(slideTween),
-                        child: FadeTransition(
-                          opacity: animation.drive(fadeTween),
-                          child: child,
-                        ),
-                      );
-                    },
+                    pageBuilder: (context, animation, secondaryAnimation) =>
+                        const OnboardingScreen(),
+                    transitionsBuilder:
+                        (context, animation, secondaryAnimation, child) {
+                          const begin = Offset(
+                            -1.0,
+                            0.0,
+                          ); // Deslizar desde la izquierda al cerrar sesión
+                          const end = Offset.zero;
+                          const curve = Curves.easeOutCubic;
+                          final slideTween = Tween(
+                            begin: begin,
+                            end: end,
+                          ).chain(CurveTween(curve: curve));
+                          final fadeTween = Tween<double>(
+                            begin: 0.0,
+                            end: 1.0,
+                          ).chain(CurveTween(curve: curve));
+                          return SlideTransition(
+                            position: animation.drive(slideTween),
+                            child: FadeTransition(
+                              opacity: animation.drive(fadeTween),
+                              child: child,
+                            ),
+                          );
+                        },
                     transitionDuration: const Duration(milliseconds: 500),
                   ),
                   (route) => false,
@@ -116,9 +143,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.alertRed,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
-            child: Text('Cerrar Sesión', style: AppTextStyles.bodyBold.copyWith(color: Colors.white)),
+            child: Text(
+              'Cerrar Sesión',
+              style: AppTextStyles.bodyBold.copyWith(color: Colors.white),
+            ),
           ),
         ],
       ),
@@ -129,17 +161,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(LucideIcons.arrowLeft, color: AppColors.textPrimary),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: Text(
-          'Mi Perfil',
-          style: AppTextStyles.h2.copyWith(color: AppColors.textPrimary),
-        ),
+      appBar: AuraPageAppBar(
+        title: 'Mi Perfil',
+        showProfile: false,
         actions: [
           IconButton(
             icon: Icon(
@@ -159,19 +183,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
       body: Consumer<DataProvider>(
         builder: (context, provider, child) {
           if (provider.isLoading) {
-            return const Center(child: CircularProgressIndicator(color: AppColors.primaryGreen));
+            return const Center(
+              child: CircularProgressIndicator(color: AppColors.primaryGreen),
+            );
           }
 
           final animals = provider.animals;
           final alertsCount = provider.alerts.length;
-          
+
           // Calcular estadísticas
           final totalAnimals = animals.length;
-          final avgWeight = totalAnimals > 0 
-              ? animals.map((a) => a.weightKg).reduce((a, b) => a + b) / totalAnimals 
+          final avgWeight = totalAnimals > 0
+              ? animals.map((a) => a.weightKg).reduce((a, b) => a + b) /
+                    totalAnimals
               : 0.0;
-          final avgScore = totalAnimals > 0 
-              ? (animals.map((a) => a.score).reduce((a, b) => a + b) / totalAnimals).round() 
+          final avgScore = totalAnimals > 0
+              ? (animals.map((a) => a.score).reduce((a, b) => a + b) /
+                        totalAnimals)
+                    .round()
               : 0;
 
           return Form(
@@ -199,22 +228,30 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ),
                         alignment: Alignment.center,
                         child: Text(
-                          _nameController.text.isNotEmpty ? _nameController.text[0].toUpperCase() : 'U',
-                          style: AppTextStyles.scoreNumber.copyWith(color: Colors.white, fontSize: 32),
+                          _nameController.text.isNotEmpty
+                              ? _nameController.text[0].toUpperCase()
+                              : 'U',
+                          style: AppTextStyles.scoreNumber.copyWith(
+                            color: Colors.white,
+                            fontSize: 32,
+                          ),
                         ),
                       ),
                       const SizedBox(height: 12),
-                      Text(
-                        _nameController.text,
-                        style: AppTextStyles.h1,
-                      ),
+                      Text(_nameController.text, style: AppTextStyles.h1),
                       Text(
                         _farmController.text,
-                        style: AppTextStyles.body.copyWith(color: AppColors.primaryGreen, fontWeight: FontWeight.w600),
+                        style: AppTextStyles.body.copyWith(
+                          color: AppColors.primaryGreen,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                       const SizedBox(height: 6),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 4,
+                        ),
                         decoration: BoxDecoration(
                           color: SupabaseService.instance.isAuthenticated
                               ? AppColors.primaryGreen.withOpacity(0.08)
@@ -277,7 +314,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         label: 'Nombre del Propietario',
                         icon: LucideIcons.user,
                         enabled: _isEditing,
-                        validator: (value) => value == null || value.trim().isEmpty ? 'Ingrese un nombre' : null,
+                        validator: (value) =>
+                            value == null || value.trim().isEmpty
+                            ? 'Ingrese un nombre'
+                            : null,
                       ),
                       const SizedBox(height: 14),
                       _buildTextField(
@@ -285,7 +325,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         label: 'Nombre de la Finca',
                         icon: LucideIcons.leaf,
                         enabled: _isEditing,
-                        validator: (value) => value == null || value.trim().isEmpty ? 'Ingrese el nombre de la finca' : null,
+                        validator: (value) =>
+                            value == null || value.trim().isEmpty
+                            ? 'Ingrese el nombre de la finca'
+                            : null,
                       ),
                       const SizedBox(height: 14),
                       _buildTextField(
@@ -293,7 +336,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         label: 'Ubicación',
                         icon: LucideIcons.mapPin,
                         enabled: _isEditing,
-                        validator: (value) => value == null || value.trim().isEmpty ? 'Ingrese la ubicación' : null,
+                        validator: (value) =>
+                            value == null || value.trim().isEmpty
+                            ? 'Ingrese la ubicación'
+                            : null,
                       ),
                       const SizedBox(height: 14),
                       _buildTextField(
@@ -303,8 +349,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         enabled: _isEditing,
                         keyboardType: TextInputType.emailAddress,
                         validator: (value) {
-                          if (value == null || value.trim().isEmpty) return 'Ingrese un correo';
-                          if (!value.contains('@')) return 'Ingrese un correo válido';
+                          if (value == null || value.trim().isEmpty)
+                            return 'Ingrese un correo';
+                          if (!value.contains('@'))
+                            return 'Ingrese un correo válido';
                           return null;
                         },
                       ),
@@ -324,22 +372,46 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Estadísticas del Hato (Real)', style: AppTextStyles.h3),
+                      Text(
+                        'Estadísticas del Hato (Real)',
+                        style: AppTextStyles.h3,
+                      ),
                       const SizedBox(height: 16),
                       GridView(
                         shrinkWrap: true,
                         physics: const NeverScrollableScrollPhysics(),
-                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 2,
-                          crossAxisSpacing: 12,
-                          mainAxisSpacing: 12,
-                          childAspectRatio: 1.8,
-                        ),
+                        gridDelegate:
+                            const SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 2,
+                              crossAxisSpacing: 12,
+                              mainAxisSpacing: 12,
+                              childAspectRatio: 1.8,
+                            ),
                         children: [
-                          _buildStatCard('Ganado', '$totalAnimals', LucideIcons.beef, AppColors.primaryGreen),
-                          _buildStatCard('Alertas', '$alertsCount', LucideIcons.alertTriangle, AppColors.alertOrange),
-                          _buildStatCard('Peso Prom.', '${avgWeight.toStringAsFixed(0)} kg', LucideIcons.scale, AppColors.earthBrown),
-                          _buildStatCard('Score Prom.', '$avgScore%', LucideIcons.heartPulse, AppColors.primaryGreenDark),
+                          _buildStatCard(
+                            'Ganado',
+                            '$totalAnimals',
+                            LucideIcons.beef,
+                            AppColors.primaryGreen,
+                          ),
+                          _buildStatCard(
+                            'Alertas',
+                            '$alertsCount',
+                            LucideIcons.alertTriangle,
+                            AppColors.alertOrange,
+                          ),
+                          _buildStatCard(
+                            'Peso Prom.',
+                            '${avgWeight.toStringAsFixed(0)} kg',
+                            LucideIcons.scale,
+                            AppColors.earthBrown,
+                          ),
+                          _buildStatCard(
+                            'Score Prom.',
+                            '$avgScore%',
+                            LucideIcons.heartPulse,
+                            AppColors.primaryGreenDark,
+                          ),
                         ],
                       ),
                     ],
@@ -354,10 +426,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       backgroundColor: AppColors.primaryGreen,
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
                       elevation: 0,
                     ),
-                    child: Text('Guardar Cambios', style: AppTextStyles.bodyBold.copyWith(color: Colors.white)),
+                    child: Text(
+                      'Guardar Cambios',
+                      style: AppTextStyles.bodyBold.copyWith(
+                        color: Colors.white,
+                      ),
+                    ),
                   )
                 else
                   SizedBox(
@@ -365,14 +444,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     height: 52,
                     child: OutlinedButton.icon(
                       onPressed: () => _handleLogout(context, provider),
-                      icon: const Icon(LucideIcons.logOut, color: AppColors.alertRed, size: 20),
+                      icon: const Icon(
+                        LucideIcons.logOut,
+                        color: AppColors.alertRed,
+                        size: 20,
+                      ),
                       label: Text(
                         'Cerrar Sesión',
-                        style: AppTextStyles.bodyBold.copyWith(color: AppColors.alertRed),
+                        style: AppTextStyles.bodyBold.copyWith(
+                          color: AppColors.alertRed,
+                        ),
                       ),
                       style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: AppColors.alertRed, width: 1.5),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        side: const BorderSide(
+                          color: AppColors.alertRed,
+                          width: 1.5,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
                       ),
                     ),
                   ),
@@ -402,18 +492,35 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: AppTextStyles.caption.copyWith(color: AppColors.textSecondary),
-        prefixIcon: Icon(icon, size: 20, color: enabled ? AppColors.primaryGreen : AppColors.textSecondary),
-        disabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: AppColors.border)),
-        enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: AppColors.border)),
-        focusedBorder: const UnderlineInputBorder(borderSide: BorderSide(color: AppColors.primaryGreen, width: 2)),
+        labelStyle: AppTextStyles.caption.copyWith(
+          color: AppColors.textSecondary,
+        ),
+        prefixIcon: Icon(
+          icon,
+          size: 20,
+          color: enabled ? AppColors.primaryGreen : AppColors.textSecondary,
+        ),
+        disabledBorder: UnderlineInputBorder(
+          borderSide: BorderSide(color: AppColors.border),
+        ),
+        enabledBorder: UnderlineInputBorder(
+          borderSide: BorderSide(color: AppColors.border),
+        ),
+        focusedBorder: const UnderlineInputBorder(
+          borderSide: BorderSide(color: AppColors.primaryGreen, width: 2),
+        ),
         filled: !enabled,
         fillColor: Colors.transparent,
       ),
     );
   }
 
-  Widget _buildStatCard(String label, String value, IconData icon, Color color) {
+  Widget _buildStatCard(
+    String label,
+    String value,
+    IconData icon,
+    Color color,
+  ) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(

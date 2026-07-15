@@ -8,6 +8,7 @@ import '../services/emergency_ai_service.dart';
 import '../services/speech_service.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_text_styles.dart';
+import '../widgets/navigation/top_app_bar.dart';
 import 'chat/clinical_case_chat_screen.dart';
 
 class SosScreen extends StatefulWidget {
@@ -199,15 +200,7 @@ class _SosScreenState extends State<SosScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(
-        title: const Text(
-          'AURA SOS Ganadero',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-        ),
-        backgroundColor: AppColors.primaryGreenDark,
-        elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.white),
-      ),
+      appBar: const AuraPageAppBar(title: 'AURA SOS Ganadero'),
       body: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
         child: Column(
